@@ -262,19 +262,14 @@
     }
 
     function formatToday(date) {
-      return new Intl.DateTimeFormat('en-US', {
-        weekday: 'long',
-        month: 'short',
-        day: 'numeric'
-      }).format(date);
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+      return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日（${weekdays[date.getDay()]}）`;
     }
 
     function formatExpenseDate(dateValue) {
-      return new Intl.DateTimeFormat('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric'
-      }).format(parseLocalDate(dateValue));
+      const date = parseLocalDate(dateValue);
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+      return `${date.getMonth() + 1}月${date.getDate()}日（${weekdays[date.getDay()]}）`;
     }
 
     function updateTodayLabel() {
@@ -379,7 +374,9 @@
       monthlyTotal.textContent = formatYen(total);
       chartCenterTotal.textContent = formatYen(total);
       remainingBudget.textContent = formatYen(remaining);
-      dailyAvailable.textContent = formatYen(dailyAmount);
+      dailyAvailable.textContent = remaining < 0 ? '予算オーバー' : formatYen(dailyAmount);
+      remainingBudget.classList.toggle('text-rose-600', remaining < 0);
+      remainingBudget.classList.toggle('text-emerald-900', remaining >= 0);
       updateCategoryChart(categoryTotals, total);
       updateCategoryLegend(categoryTotals, total);
       budgetInput.value = monthlyBudget;
