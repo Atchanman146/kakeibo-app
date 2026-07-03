@@ -52,6 +52,11 @@
   </div>
 
   <main class="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 py-6">
+    <header class="mb-5 rounded-lg bg-gradient-to-r from-emerald-100 to-teal-100 px-5 py-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Today</p>
+      <p id="todayLabel" class="mt-1 text-2xl font-bold tracking-normal text-slate-900">Saturday, Jul 4</p>
+    </header>
+
     <section class="rounded-lg bg-white p-6 shadow-sm">
       <p class="text-sm font-medium text-slate-500">今月の総支出</p>
       <div class="mt-3">
@@ -104,6 +109,16 @@
       </form>
 
       <form id="expenseForm" class="space-y-4">
+        <div>
+          <label for="expenseDate" class="block text-sm font-semibold text-slate-700">日付</label>
+          <input
+            id="expenseDate"
+            type="date"
+            class="mt-2 w-full rounded-lg border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-base font-medium text-slate-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+            required
+          >
+        </div>
+
         <div>
           <label for="amount" class="block text-sm font-semibold text-slate-700">金額</label>
           <input
@@ -160,6 +175,8 @@
     const DEFAULT_BUDGET = 50000;
     const form = document.getElementById('expenseForm');
     const budgetForm = document.getElementById('budgetForm');
+    const todayLabel = document.getElementById('todayLabel');
+    const expenseDateInput = document.getElementById('expenseDate');
     const amountInput = document.getElementById('amount');
     const categoryInput = document.getElementById('category');
     const budgetInput = document.getElementById('budget');
@@ -201,6 +218,32 @@
       return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
 
+    function toDateInputValue(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseLocalDate(dateValue) {
+      if (!dateValue) return new Date();
+
+      const [year, month, day] = dateValue.split('-').map(Number);
+      if (!year || !month || !day) return new Date(dateValue);
+
+      return new Date(year, month - 1, day);
+    }
+
+    function getExpenseDateValue(expense) {
+      return expense.expenseDate || toDateInputValue(new Date(expense.createdAt));
+    }
+
+    function getExpenseTimestamp(expense) {
+      const date = parseLocalDate(getExpenseDateValue(expense));
+      date.setHours(23, 59, 59, 999);
+      return date.getTime();
+    }
+
     function loadBudget() {
       const savedBudget = Number(localStorage.getItem(BUDGET_STORAGE_KEY));
       return Number.isFinite(savedBudget) && savedBudget >= 0 ? savedBudget : DEFAULT_BUDGET;
@@ -218,17 +261,28 @@
       }).format(value);
     }
 
-    function formatDate(isoDate) {
-      return new Intl.DateTimeFormat('ja-JP', {
-        month: 'numeric',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(new Date(isoDate));
+    function formatToday(date) {
+      return new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric'
+      }).format(date);
     }
 
-    function isCurrentMonth(isoDate) {
-      const date = new Date(isoDate);
+    function formatExpenseDate(dateValue) {
+      return new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+      }).format(parseLocalDate(dateValue));
+    }
+
+    function updateTodayLabel() {
+      todayLabel.textContent = formatToday(new Date());
+    }
+
+    function isCurrentMonth(expense) {
+      const date = parseLocalDate(getExpenseDateValue(expense));
       const now = new Date();
       return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
     }
@@ -240,7 +294,7 @@
     }
 
     function getCurrentMonthExpenses() {
-      return expenses.filter((expense) => isCurrentMonth(expense.createdAt));
+      return expenses.filter((expense) => isCurrentMonth(expense));
     }
 
     function getCategoryTotals(currentMonthExpenses) {
@@ -335,7 +389,12 @@
 
       expenses
         .slice()
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .sort((a, b) => {
+          const dateDiff = getExpenseTimestamp(b) - getExpenseTimestamp(a);
+          if (dateDiff !== 0) return dateDiff;
+
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        })
         .forEach((expense) => {
           const item = document.createElement('li');
           item.className = 'flex items-center justify-between gap-3 rounded-lg bg-white p-4 shadow-sm';
@@ -343,7 +402,7 @@
             <div class="min-w-0">
               <div class="flex items-center gap-2">
                 <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">${expense.category}</span>
-                <span class="text-xs text-slate-400">${formatDate(expense.createdAt)}</span>
+                <span class="text-xs text-slate-400">${formatExpenseDate(getExpenseDateValue(expense))}</span>
               </div>
               <p class="mt-2 text-xl font-bold text-slate-900">${formatYen(expense.amount)}</p>
             </div>
@@ -386,6 +445,7 @@
         id: createId(),
         amount: Math.round(amount),
         category: categoryInput.value,
+        expenseDate: expenseDateInput.value,
         createdAt: new Date().toISOString()
       });
 
@@ -393,6 +453,7 @@
       render();
       form.reset();
       categoryInput.value = '食費';
+      expenseDateInput.value = toDateInputValue(new Date());
       amountInput.focus();
     });
 
@@ -406,7 +467,10 @@
     });
 
     window.addEventListener('load', () => {
+      updateTodayLabel();
+      expenseDateInput.value = toDateInputValue(new Date());
       render();
+      window.setInterval(updateTodayLabel, 60000);
 
       window.setTimeout(() => {
         splashScreen.classList.add('splash-hidden');
