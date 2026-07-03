@@ -3,11 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>シンプル家計簿</title>
+  <link rel="apple-touch-icon" href="icon.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.min.js" defer></script>
+  <style>
+    #splashScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #a3e6d2 0%, #76d7c4 100%);
+      opacity: 1;
+      transition: opacity 500ms ease, visibility 500ms ease;
+    }
+
+    #splashScreen.splash-hidden {
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .splash-logo {
+      width: 132px;
+      height: 132px;
+      border-radius: 32px;
+      box-shadow: 0 24px 60px rgba(15, 118, 110, 0.22);
+      opacity: 0;
+      transform: scale(0.9);
+      animation: splashLogoIn 700ms ease forwards;
+    }
+
+    @keyframes splashLogoIn {
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+  </style>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-800">
+  <div id="splashScreen" aria-hidden="true">
+    <img src="icon.png" alt="" class="splash-logo">
+  </div>
+
   <main class="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 py-6">
     <section class="rounded-lg bg-white p-6 shadow-sm">
       <p class="text-sm font-medium text-slate-500">今月の総支出</p>
@@ -129,6 +172,7 @@
     const historyList = document.getElementById('historyList');
     const emptyState = document.getElementById('emptyState');
     const itemCount = document.getElementById('itemCount');
+    const splashScreen = document.getElementById('splashScreen');
     const categories = ['食費', '日用品', '趣味', 'その他'];
     const chartColors = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa'];
     const emptyChartColors = ['#e2e8f0', '#e2e8f0', '#e2e8f0', '#e2e8f0'];
@@ -361,7 +405,13 @@
       render();
     });
 
-    window.addEventListener('load', render);
+    window.addEventListener('load', () => {
+      render();
+
+      window.setTimeout(() => {
+        splashScreen.classList.add('splash-hidden');
+      }, 1000);
+    });
   </script>
 </body>
 </html>
