@@ -200,10 +200,38 @@
 
     function loadExpenses() {
       try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        const savedExpenses = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        if (!Array.isArray(savedExpenses)) return [];
+
+        return savedExpenses
+          .map(normalizeExpense)
+          .filter(Boolean);
       } catch {
         return [];
       }
+    }
+
+    function normalizeExpense(expense) {
+      if (!expense || typeof expense !== 'object') return null;
+
+      const amount = Number(expense.amount);
+      const category = categories.includes(expense.category) ? expense.category : 'その他';
+      const createdAt = Number.isNaN(new Date(expense.createdAt).getTime())
+        ? new Date().toISOString()
+        : expense.createdAt;
+      const expenseDate = isValidDateInput(expense.expenseDate)
+        ? expense.expenseDate
+        : toDateInputValue(new Date(createdAt));
+
+      if (!Number.isFinite(amount) || amount <= 0) return null;
+
+      return {
+        id: typeof expense.id === 'string' && expense.id ? expense.id : createId(),
+        amount: Math.round(amount),
+        category,
+        expenseDate,
+        createdAt
+      };
     }
 
     function saveExpenses() {
@@ -232,6 +260,16 @@
       if (!year || !month || !day) return new Date(dateValue);
 
       return new Date(year, month - 1, day);
+    }
+
+    function isValidDateInput(dateValue) {
+      if (typeof dateValue !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+        return false;
+      }
+
+      const [year, month, day] = dateValue.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
     }
 
     function getExpenseDateValue(expense) {
@@ -353,15 +391,61 @@
         const percent = total > 0 ? Math.round((amount / total) * 100) : 0;
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2';
-        item.innerHTML = `
-          <span class="flex min-w-0 items-center gap-2 text-slate-600">
-            <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: ${chartColors[index]}"></span>
-            <span class="truncate">${category}</span>
-          </span>
-          <span class="shrink-0 font-semibold text-slate-800">${percent}%</span>
-        `;
+
+        const label = document.createElement('span');
+        label.className = 'flex min-w-0 items-center gap-2 text-slate-600';
+
+        const swatch = document.createElement('span');
+        swatch.className = 'h-2.5 w-2.5 shrink-0 rounded-full';
+        swatch.style.backgroundColor = chartColors[index];
+
+        const categoryName = document.createElement('span');
+        categoryName.className = 'truncate';
+        categoryName.textContent = category;
+
+        const percentage = document.createElement('span');
+        percentage.className = 'shrink-0 font-semibold text-slate-800';
+        percentage.textContent = `${percent}%`;
+
+        label.append(swatch, categoryName);
+        item.append(label, percentage);
         categoryLegend.appendChild(item);
       });
+    }
+
+    function createHistoryItem(expense) {
+      const item = document.createElement('li');
+      item.className = 'flex items-center justify-between gap-3 rounded-lg bg-white p-4 shadow-sm';
+
+      const detail = document.createElement('div');
+      detail.className = 'min-w-0';
+
+      const meta = document.createElement('div');
+      meta.className = 'flex items-center gap-2';
+
+      const category = document.createElement('span');
+      category.className = 'rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700';
+      category.textContent = expense.category;
+
+      const date = document.createElement('span');
+      date.className = 'text-xs text-slate-400';
+      date.textContent = formatExpenseDate(getExpenseDateValue(expense));
+
+      const amount = document.createElement('p');
+      amount.className = 'mt-2 text-xl font-bold text-slate-900';
+      amount.textContent = formatYen(expense.amount);
+
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-600';
+      deleteButton.dataset.id = expense.id;
+      deleteButton.textContent = '削除';
+
+      meta.append(category, date);
+      detail.append(meta, amount);
+      item.append(detail, deleteButton);
+
+      return item;
     }
 
     function render() {
@@ -393,25 +477,7 @@
           return new Date(b.createdAt) - new Date(a.createdAt);
         })
         .forEach((expense) => {
-          const item = document.createElement('li');
-          item.className = 'flex items-center justify-between gap-3 rounded-lg bg-white p-4 shadow-sm';
-          item.innerHTML = `
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">${expense.category}</span>
-                <span class="text-xs text-slate-400">${formatExpenseDate(getExpenseDateValue(expense))}</span>
-              </div>
-              <p class="mt-2 text-xl font-bold text-slate-900">${formatYen(expense.amount)}</p>
-            </div>
-            <button
-              type="button"
-              class="shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-600"
-              data-id="${expense.id}"
-            >
-              削除
-            </button>
-          `;
-          historyList.appendChild(item);
+          historyList.appendChild(createHistoryItem(expense));
         });
     }
 
@@ -438,10 +504,17 @@
         return;
       }
 
+      if (!isValidDateInput(expenseDateInput.value)) {
+        expenseDateInput.focus();
+        return;
+      }
+
+      const category = categories.includes(categoryInput.value) ? categoryInput.value : 'その他';
+
       expenses.push({
         id: createId(),
         amount: Math.round(amount),
-        category: categoryInput.value,
+        category,
         expenseDate: expenseDateInput.value,
         createdAt: new Date().toISOString()
       });
