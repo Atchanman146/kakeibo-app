@@ -44,6 +44,24 @@
         transform: scale(1);
       }
     }
+
+    input[type="date"] {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-height: 52px;
+      box-sizing: border-box;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input[type="date"]::-webkit-date-and-time-value {
+      text-align: left;
+    }
+
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      margin-left: auto;
+    }
   </style>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-800">
@@ -114,7 +132,7 @@
           <input
             id="expenseDate"
             type="date"
-            class="mt-2 w-full rounded-lg border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-base font-medium text-slate-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+            class="mt-2 block w-full max-w-full rounded-lg border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-left text-base font-medium text-slate-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
             required
           >
         </div>
