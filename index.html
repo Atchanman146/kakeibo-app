@@ -62,6 +62,22 @@
     input[type="date"]::-webkit-calendar-picker-indicator {
       margin-left: auto;
     }
+
+    .panel-track {
+      scroll-behavior: smooth;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .panel-track::-webkit-scrollbar {
+      display: none;
+    }
+
+    .app-panel {
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
   </style>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-800">
@@ -69,199 +85,252 @@
     <img src="icon.png" alt="" class="splash-logo">
   </div>
 
-  <main class="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 py-6">
-    <header class="mb-5 rounded-lg bg-gradient-to-r from-emerald-100 to-teal-100 px-5 py-4 shadow-sm">
+  <main class="mx-auto flex h-screen w-full max-w-md flex-col overflow-hidden px-4 py-5">
+    <header class="shrink-0 rounded-lg bg-gradient-to-r from-emerald-100 to-teal-100 px-5 py-4 shadow-sm">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Today</p>
       <p id="todayLabel" class="mt-1 text-2xl font-bold tracking-normal text-slate-900">Saturday, Jul 4</p>
     </header>
 
-    <section class="rounded-lg bg-white p-6 shadow-sm">
-      <p class="text-sm font-medium text-slate-500">今月の総支出</p>
-      <div class="mt-3">
-        <p id="monthlyTotal" class="text-4xl font-bold tracking-normal text-slate-900">¥0</p>
+    <nav class="mt-4 shrink-0 rounded-lg bg-white/80 p-1 shadow-sm" aria-label="画面切り替え">
+      <div class="grid grid-cols-2 gap-1 text-sm font-semibold">
+        <a id="overviewTab" href="#panelOverview" class="rounded-lg bg-emerald-600 px-3 py-2 text-center text-white transition">概要</a>
+        <a id="manageTab" href="#panelManage" class="rounded-lg px-3 py-2 text-center text-slate-500 transition">管理</a>
       </div>
+    </nav>
 
-      <div class="mt-5 flex justify-center">
-        <div class="relative h-40 w-40">
-          <canvas id="categoryChart" aria-label="カテゴリ別の支出割合"></canvas>
-          <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-            <p class="text-[11px] font-semibold text-slate-400">総支出</p>
-            <p id="chartCenterTotal" class="mt-1 max-w-28 break-words text-lg font-bold leading-tight text-slate-900">¥0</p>
+    <div id="panelTrack" class="panel-track mt-4 flex min-h-0 flex-1 gap-4 overflow-x-auto">
+      <section id="panelOverview" class="app-panel h-full w-full flex-shrink-0 overflow-y-auto rounded-lg bg-white p-5 shadow-sm">
+        <div class="mb-5">
+          <p class="text-sm font-medium text-slate-500">今月の家計簿概要</p>
+          <h1 class="mt-1 text-2xl font-bold text-slate-900">お金の見える化</h1>
+        </div>
+
+        <div class="rounded-lg bg-slate-50 p-5">
+          <p class="text-sm font-medium text-slate-500">今月の総支出</p>
+          <p id="monthlyTotal" class="mt-3 text-4xl font-bold tracking-normal text-slate-900">¥0</p>
+
+          <div class="mt-5 flex justify-center">
+            <div class="relative h-40 w-40">
+              <canvas id="categoryChart" aria-label="カテゴリ別の支出割合"></canvas>
+              <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                <p class="text-[11px] font-semibold text-slate-400">総支出</p>
+                <p id="chartCenterTotal" class="mt-1 max-w-28 break-words text-lg font-bold leading-tight text-slate-900">¥0</p>
+              </div>
+            </div>
+          </div>
+          <div id="categoryLegend" class="mt-4 grid grid-cols-2 gap-2 text-xs"></div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="rounded-lg bg-emerald-50 p-4">
+            <p class="text-xs font-semibold text-emerald-700">今月の残り予算</p>
+            <p id="remainingBudget" class="mt-2 text-xl font-bold text-emerald-900">¥0</p>
+          </div>
+          <div class="rounded-lg bg-blue-50 p-4">
+            <p class="text-xs font-semibold text-blue-700">今日使えるお金</p>
+            <p id="dailyAvailable" class="mt-2 text-xl font-bold text-blue-900">¥0</p>
           </div>
         </div>
-      </div>
-      <div id="categoryLegend" class="mt-4 grid grid-cols-2 gap-2 text-xs"></div>
 
-      <div class="mt-5 grid grid-cols-2 gap-3">
-        <div class="rounded-lg bg-emerald-50 p-4">
-          <p class="text-xs font-semibold text-emerald-700">今月の残り予算</p>
-          <p id="remainingBudget" class="mt-2 text-xl font-bold text-emerald-900">¥0</p>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="rounded-lg bg-teal-50 p-4">
+            <p class="text-xs font-semibold text-teal-700">合計月額コスト</p>
+            <p id="subscriptionMonthlyTotal" class="mt-2 text-2xl font-bold text-teal-900">¥0</p>
+          </div>
+          <div class="rounded-lg bg-indigo-50 p-4">
+            <p class="text-xs font-semibold text-indigo-700">合計年額コスト</p>
+            <p id="subscriptionYearlyTotal" class="mt-2 text-2xl font-bold text-indigo-900">¥0</p>
+          </div>
         </div>
-        <div class="rounded-lg bg-blue-50 p-4">
-          <p class="text-xs font-semibold text-blue-700">今日使えるお金</p>
-          <p id="dailyAvailable" class="mt-2 text-xl font-bold text-blue-900">¥0</p>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="mt-5 rounded-lg bg-white p-5 shadow-sm">
-      <form id="expenseForm" class="space-y-4 border-b border-slate-100 pb-5">
-        <div>
-          <label for="expenseDate" class="block text-sm font-semibold text-slate-700">日付</label>
-          <input
-            id="expenseDate"
-            type="date"
-            class="mt-2 block w-full max-w-full rounded-lg border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-left text-base font-medium text-slate-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
-            required
-          >
+      <section id="panelManage" class="app-panel flex h-full w-full flex-shrink-0 flex-col overflow-y-auto rounded-lg bg-white p-5 shadow-sm">
+        <div class="order-2 mb-4 mt-6 border-t border-slate-100 pt-5">
+          <p class="text-sm font-medium text-slate-500">サブスク/固定費の管理</p>
+          <h2 class="mt-1 text-xl font-bold text-slate-900">毎月かかるお金</h2>
         </div>
 
-        <div>
-          <label for="amount" class="block text-sm font-semibold text-slate-700">金額</label>
-          <input
-            id="amount"
-            type="number"
-            inputmode="numeric"
-            min="1"
-            step="1"
-            placeholder="例: 1200"
-            class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-            required
-          >
-        </div>
+        <form id="subscriptionForm" class="order-3 space-y-4 border-b border-slate-100 pb-5">
+          <div>
+            <label for="subscriptionName" class="block text-sm font-semibold text-slate-700">アイテム名</label>
+            <input
+              id="subscriptionName"
+              type="text"
+              maxlength="40"
+              placeholder="例: Netflix, 家賃"
+              class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
+              required
+            >
+          </div>
 
-        <div>
-          <label for="category" class="block text-sm font-semibold text-slate-700">カテゴリ</label>
-          <select
-            id="category"
-            class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-          >
-            <option value="食費">食費</option>
-            <option value="日用品">日用品</option>
-            <option value="趣味">趣味</option>
-            <option value="その他">その他</option>
-          </select>
-        </div>
+          <div>
+            <label for="subscriptionAmount" class="block text-sm font-semibold text-slate-700">金額</label>
+            <input
+              id="subscriptionAmount"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              step="1"
+              placeholder="例: 1200"
+              class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
+              required
+            >
+          </div>
 
-        <button
-          type="submit"
-          class="w-full rounded-lg bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99]"
-        >
-          追加
-        </button>
-      </form>
+          <div>
+            <label for="subscriptionCycle" class="block text-sm font-semibold text-slate-700">支払サイクル</label>
+            <select
+              id="subscriptionCycle"
+              class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
+            >
+              <option value="monthly">月額</option>
+              <option value="yearly">年額</option>
+            </select>
+          </div>
 
-      <form id="budgetForm" class="mt-5">
-        <label for="budget" class="block text-sm font-semibold text-slate-700">今月の予算</label>
-        <div class="mt-2 flex gap-2">
-          <input
-            id="budget"
-            type="number"
-            inputmode="numeric"
-            min="0"
-            step="1000"
-            class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
-            required
-          >
           <button
             type="submit"
-            class="shrink-0 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.99]"
+            class="w-full rounded-lg bg-teal-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.99]"
           >
-            設定
+            固定費を追加
           </button>
-        </div>
-      </form>
-    </section>
+        </form>
 
-    <section class="mt-5 rounded-lg bg-white p-5 shadow-sm">
-      <div class="mb-4">
-        <p class="text-sm font-medium text-slate-500">サブスク・固定費</p>
-        <h2 class="mt-1 text-xl font-bold text-slate-900">毎月かかるお金</h2>
-      </div>
+        <div class="order-4 mt-5 border-b border-slate-100 pb-5">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-800">固定費一覧</h2>
+            <p id="subscriptionCount" class="text-sm text-slate-500">0件</p>
+          </div>
 
-      <div class="grid grid-cols-2 gap-3">
-        <div class="rounded-lg bg-teal-50 p-4">
-          <p class="text-xs font-semibold text-teal-700">合計月額コスト</p>
-          <p id="subscriptionMonthlyTotal" class="mt-2 text-2xl font-bold text-teal-900">¥0</p>
-        </div>
-        <div class="rounded-lg bg-indigo-50 p-4">
-          <p class="text-xs font-semibold text-indigo-700">合計年額コスト</p>
-          <p id="subscriptionYearlyTotal" class="mt-2 text-2xl font-bold text-indigo-900">¥0</p>
-        </div>
-      </div>
+          <div id="subscriptionEmptyState" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-500">
+            まだ固定費がありません
+          </div>
 
-      <form id="subscriptionForm" class="mt-5 space-y-4 border-b border-slate-100 pb-5">
-        <div>
-          <label for="subscriptionName" class="block text-sm font-semibold text-slate-700">アイテム名</label>
-          <input
-            id="subscriptionName"
-            type="text"
-            maxlength="40"
-            placeholder="例: Netflix, 家賃"
-            class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
-            required
-          >
+          <ul id="subscriptionList" class="space-y-3"></ul>
         </div>
 
-        <div>
-          <label for="subscriptionAmount" class="block text-sm font-semibold text-slate-700">金額</label>
-          <input
-            id="subscriptionAmount"
-            type="number"
-            inputmode="numeric"
-            min="1"
-            step="1"
-            placeholder="例: 1200"
-            class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
-            required
-          >
+        <div class="order-1">
+          <div class="mb-4">
+            <p class="text-sm font-medium text-slate-500">家計簿入力</p>
+            <h2 class="mt-1 text-xl font-bold text-slate-900">支出と予算</h2>
+          </div>
+
+          <form id="expenseForm" class="space-y-4 border-b border-slate-100 pb-5">
+            <div>
+              <label for="expenseDate" class="block text-sm font-semibold text-slate-700">日付</label>
+              <input
+                id="expenseDate"
+                type="date"
+                class="mt-2 block w-full max-w-full rounded-lg border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-left text-base font-medium text-slate-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+                required
+              >
+            </div>
+
+            <div>
+              <label for="amount" class="block text-sm font-semibold text-slate-700">金額</label>
+              <input
+                id="amount"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                placeholder="例: 1200"
+                class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                required
+              >
+            </div>
+
+            <div>
+              <label for="category" class="block text-sm font-semibold text-slate-700">カテゴリ</label>
+              <select
+                id="category"
+                class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+              >
+                <option value="食費">食費</option>
+                <option value="日用品">日用品</option>
+                <option value="趣味">趣味</option>
+                <option value="その他">その他</option>
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              class="w-full rounded-lg bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99]"
+            >
+              追加
+            </button>
+          </form>
+
+          <form id="budgetForm" class="mt-5 border-b border-slate-100 pb-5">
+            <label for="budget" class="block text-sm font-semibold text-slate-700">今月の予算</label>
+            <div class="mt-2 flex gap-2">
+              <input
+                id="budget"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                step="1000"
+                class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+                required
+              >
+              <button
+                type="submit"
+                class="shrink-0 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.99]"
+              >
+                設定
+              </button>
+            </div>
+          </form>
+
+          <div class="mt-5 border-b border-slate-100 pb-5">
+            <div class="mb-3">
+              <p class="text-sm font-medium text-slate-500">バックアップ</p>
+              <h2 class="mt-1 text-base font-bold text-slate-800">CSV書き出し・読み込み</h2>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <button
+                id="exportCsvButton"
+                type="button"
+                class="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900 active:scale-[0.99]"
+              >
+                書き出し
+              </button>
+              <button
+                id="importCsvButton"
+                type="button"
+                class="rounded-lg bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-[0.99]"
+              >
+                読み込み
+              </button>
+            </div>
+
+            <input id="importCsvInput" type="file" accept=".csv,text/csv" class="hidden">
+            <p class="mt-3 text-xs leading-relaxed text-slate-500">
+              CSVは端末内だけで処理されます。読み込み時は現在のデータに上書きされます。
+            </p>
+          </div>
+
+          <div class="mt-5">
+            <div class="mb-3 flex items-center justify-between">
+              <h2 class="text-base font-bold text-slate-800">履歴</h2>
+              <p id="itemCount" class="text-sm text-slate-500">0件</p>
+            </div>
+
+            <div id="emptyState" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-500">
+              まだ支出がありません
+            </div>
+
+            <ul id="historyList" class="space-y-3"></ul>
+          </div>
         </div>
+      </section>
+    </div>
 
-        <div>
-          <label for="subscriptionCycle" class="block text-sm font-semibold text-slate-700">支払サイクル</label>
-          <select
-            id="subscriptionCycle"
-            class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
-          >
-            <option value="monthly">月額</option>
-            <option value="yearly">年額</option>
-          </select>
-        </div>
-
-        <button
-          type="submit"
-          class="w-full rounded-lg bg-teal-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.99]"
-        >
-          固定費を追加
-        </button>
-      </form>
-
-      <div class="mt-5">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-base font-bold text-slate-800">固定費一覧</h2>
-          <p id="subscriptionCount" class="text-sm text-slate-500">0件</p>
-        </div>
-
-        <div id="subscriptionEmptyState" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-500">
-          まだ固定費がありません
-        </div>
-
-        <ul id="subscriptionList" class="space-y-3"></ul>
-      </div>
-    </section>
-
-    <section class="mt-6 flex-1">
-      <div class="mb-3 flex items-center justify-between">
-        <h1 class="text-lg font-bold text-slate-800">履歴</h1>
-        <p id="itemCount" class="text-sm text-slate-500">0件</p>
-      </div>
-
-      <div id="emptyState" class="rounded-lg border border-dashed border-slate-300 bg-white/70 p-6 text-center text-sm text-slate-500">
-        まだ支出がありません
-      </div>
-
-      <ul id="historyList" class="space-y-3"></ul>
-    </section>
+    <div class="mt-4 flex shrink-0 justify-center gap-2" aria-hidden="true">
+      <span id="overviewDot" class="h-2.5 w-6 rounded-full bg-emerald-500 transition-all"></span>
+      <span id="manageDot" class="h-2.5 w-2.5 rounded-full bg-slate-300 transition-all"></span>
+    </div>
   </main>
 
   <script>
@@ -295,6 +364,14 @@
     const emptyState = document.getElementById('emptyState');
     const itemCount = document.getElementById('itemCount');
     const splashScreen = document.getElementById('splashScreen');
+    const exportCsvButton = document.getElementById('exportCsvButton');
+    const importCsvButton = document.getElementById('importCsvButton');
+    const importCsvInput = document.getElementById('importCsvInput');
+    const panelTrack = document.getElementById('panelTrack');
+    const overviewTab = document.getElementById('overviewTab');
+    const manageTab = document.getElementById('manageTab');
+    const overviewDot = document.getElementById('overviewDot');
+    const manageDot = document.getElementById('manageDot');
     const categories = ['食費', '日用品', '趣味', 'その他'];
     const subscriptionCycles = ['monthly', 'yearly'];
     const chartColors = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa'];
@@ -448,6 +525,207 @@
       return cycle === 'yearly' ? '年額' : '月額';
     }
 
+    function protectCsvText(value) {
+      const text = String(value ?? '');
+      return /^[=+\-@]/.test(text) ? `'${text}` : text;
+    }
+
+    function restoreCsvText(value) {
+      const text = String(value ?? '');
+      return /^'[=+\-@]/.test(text) ? text.slice(1) : text;
+    }
+
+    function escapeCsvCell(value) {
+      const text = protectCsvText(value);
+      const escaped = text.replaceAll('"', '""');
+      return /[",\r\n]/.test(escaped) ? `"${escaped}"` : escaped;
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = '';
+      let inQuotes = false;
+      const source = text.replace(/^\uFEFF/, '');
+
+      for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        const nextChar = source[index + 1];
+
+        if (char === '"' && inQuotes && nextChar === '"') {
+          cell += '"';
+          index += 1;
+          continue;
+        }
+
+        if (char === '"') {
+          inQuotes = !inQuotes;
+          continue;
+        }
+
+        if (char === ',' && !inQuotes) {
+          row.push(cell);
+          cell = '';
+          continue;
+        }
+
+        if ((char === '\n' || char === '\r') && !inQuotes) {
+          if (char === '\r' && nextChar === '\n') {
+            index += 1;
+          }
+          row.push(cell);
+          if (row.some((value) => value.trim() !== '')) {
+            rows.push(row);
+          }
+          row = [];
+          cell = '';
+          continue;
+        }
+
+        cell += char;
+      }
+
+      row.push(cell);
+      if (row.some((value) => value.trim() !== '')) {
+        rows.push(row);
+      }
+
+      if (inQuotes) {
+        throw new Error('CSVの引用符が正しく閉じられていません。');
+      }
+
+      return rows;
+    }
+
+    function buildCsvBackup() {
+      const rows = [
+        ['type', 'id', 'amount', 'category', 'expenseDate', 'cycle', 'name', 'createdAt', 'budget'],
+        ['budget', '', '', '', '', '', '', '', monthlyBudget]
+      ];
+
+      expenses.forEach((expense) => {
+        rows.push([
+          'expense',
+          expense.id,
+          expense.amount,
+          expense.category,
+          getExpenseDateValue(expense),
+          '',
+          '',
+          expense.createdAt,
+          ''
+        ]);
+      });
+
+      subscriptions.forEach((subscription) => {
+        rows.push([
+          'subscription',
+          subscription.id,
+          subscription.amount,
+          '',
+          '',
+          subscription.cycle,
+          subscription.name,
+          subscription.createdAt,
+          ''
+        ]);
+      });
+
+      return rows
+        .map((row) => row.map(escapeCsvCell).join(','))
+        .join('\r\n');
+    }
+
+    function exportCsvBackup() {
+      const csv = `\uFEFF${buildCsvBackup()}`;
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `kakeibo-backup-${toDateInputValue(new Date())}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function importCsvBackup(text) {
+      const rows = parseCsv(text);
+      if (rows.length < 2) {
+        throw new Error('読み込めるデータがありません。');
+      }
+
+      const headers = rows[0].map((header) => header.trim());
+      const typeIndex = headers.indexOf('type');
+      if (typeIndex === -1) {
+        throw new Error('このアプリ用のCSVではありません。');
+      }
+
+      let importedBudget = monthlyBudget;
+      const importedExpenses = [];
+      const importedSubscriptions = [];
+
+      rows.slice(1).forEach((row) => {
+        const record = {};
+        headers.forEach((header, index) => {
+          record[header] = row[index] ?? '';
+        });
+
+        const type = record.type;
+
+        if (type === 'budget') {
+          const budget = Number(record.budget);
+          if (Number.isFinite(budget) && budget >= 0) {
+            importedBudget = Math.round(budget);
+          }
+          return;
+        }
+
+        if (type === 'expense') {
+          const normalizedExpense = normalizeExpense({
+            id: restoreCsvText(record.id),
+            amount: record.amount,
+            category: restoreCsvText(record.category),
+            expenseDate: restoreCsvText(record.expenseDate),
+            createdAt: restoreCsvText(record.createdAt)
+          });
+
+          if (normalizedExpense) {
+            importedExpenses.push(normalizedExpense);
+          }
+          return;
+        }
+
+        if (type === 'subscription') {
+          const normalizedSubscription = normalizeSubscription({
+            id: restoreCsvText(record.id),
+            name: restoreCsvText(record.name),
+            amount: record.amount,
+            cycle: restoreCsvText(record.cycle),
+            createdAt: restoreCsvText(record.createdAt)
+          });
+
+          if (normalizedSubscription) {
+            importedSubscriptions.push(normalizedSubscription);
+          }
+        }
+      });
+
+      const shouldImport = window.confirm(
+        `CSVを読み込みますか？\n支出 ${importedExpenses.length}件、固定費 ${importedSubscriptions.length}件を現在のデータに上書きします。`
+      );
+      if (!shouldImport) return;
+
+      expenses = importedExpenses;
+      subscriptions = importedSubscriptions;
+      monthlyBudget = importedBudget;
+      saveExpenses();
+      saveSubscriptions();
+      saveBudget();
+      render();
+      window.alert('CSVの読み込みが完了しました。');
+    }
+
     function formatToday(date) {
       const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
       return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日（${weekdays[date.getDay()]}）`;
@@ -461,6 +739,28 @@
 
     function updateTodayLabel() {
       todayLabel.textContent = formatToday(new Date());
+    }
+
+    function setActivePanel(panelName) {
+      const isOverview = panelName === 'overview';
+
+      overviewTab.className = isOverview
+        ? 'rounded-lg bg-emerald-600 px-3 py-2 text-center text-white transition'
+        : 'rounded-lg px-3 py-2 text-center text-slate-500 transition';
+      manageTab.className = isOverview
+        ? 'rounded-lg px-3 py-2 text-center text-slate-500 transition'
+        : 'rounded-lg bg-emerald-600 px-3 py-2 text-center text-white transition';
+      overviewDot.className = isOverview
+        ? 'h-2.5 w-6 rounded-full bg-emerald-500 transition-all'
+        : 'h-2.5 w-2.5 rounded-full bg-slate-300 transition-all';
+      manageDot.className = isOverview
+        ? 'h-2.5 w-2.5 rounded-full bg-slate-300 transition-all'
+        : 'h-2.5 w-6 rounded-full bg-emerald-500 transition-all';
+    }
+
+    function updatePanelIndicator() {
+      const activePanel = panelTrack.scrollLeft > panelTrack.clientWidth / 2 ? 'manage' : 'overview';
+      setActivePanel(activePanel);
     }
 
     function isCurrentMonth(expense) {
@@ -805,10 +1105,42 @@
       render();
     });
 
+    panelTrack.addEventListener('scroll', updatePanelIndicator, { passive: true });
+
+    exportCsvButton.addEventListener('click', () => {
+      exportCsvBackup();
+    });
+
+    importCsvButton.addEventListener('click', () => {
+      importCsvInput.click();
+    });
+
+    importCsvInput.addEventListener('change', () => {
+      const file = importCsvInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        try {
+          importCsvBackup(String(reader.result || ''));
+        } catch (error) {
+          window.alert(error.message || 'CSVの読み込みに失敗しました。');
+        } finally {
+          importCsvInput.value = '';
+        }
+      });
+      reader.addEventListener('error', () => {
+        window.alert('CSVファイルを読み込めませんでした。');
+        importCsvInput.value = '';
+      });
+      reader.readAsText(file, 'utf-8');
+    });
+
     window.addEventListener('load', () => {
       updateTodayLabel();
       expenseDateInput.value = toDateInputValue(new Date());
       render();
+      updatePanelIndicator();
       window.setInterval(updateTodayLabel, 60000);
 
       window.setTimeout(() => {
