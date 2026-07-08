@@ -84,6 +84,10 @@
       height: 100dvh;
       padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
     }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
   </style>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-800">
@@ -216,9 +220,50 @@
         </div>
 
         <div class="order-1">
-          <div class="mb-4">
-            <p class="text-sm font-medium text-slate-500">家計簿入力</p>
-            <h2 class="mt-1 text-xl font-bold text-slate-900">支出と予算</h2>
+          <div class="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium text-slate-500">家計簿入力</p>
+              <h2 class="mt-1 text-xl font-bold text-slate-900">支出と予算</h2>
+            </div>
+
+            <details class="relative">
+              <summary class="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full bg-slate-50 text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-100 active:scale-[0.98]">
+                <span class="sr-only">設定</span>
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.06.06a2.18 2.18 0 1 1-3.08 3.08l-.06-.06a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.66v.18a2.18 2.18 0 1 1-4.36 0v-.1A1.8 1.8 0 0 0 8.1 19.7a1.8 1.8 0 0 0-1.98.36l-.06.06a2.18 2.18 0 1 1-3.08-3.08l.06-.06A1.8 1.8 0 0 0 3.4 15a1.8 1.8 0 0 0-1.66-1.1h-.18a2.18 2.18 0 1 1 0-4.36h.1A1.8 1.8 0 0 0 3.4 8.4a1.8 1.8 0 0 0-.36-1.98l-.06-.06a2.18 2.18 0 1 1 3.08-3.08l.06.06A1.8 1.8 0 0 0 8.1 3.7h.12A1.8 1.8 0 0 0 9.24 2v-.18a2.18 2.18 0 1 1 4.36 0v.1a1.8 1.8 0 0 0 1.1 1.66 1.8 1.8 0 0 0 1.98-.36l.06-.06a2.18 2.18 0 1 1 3.08 3.08l-.06.06a1.8 1.8 0 0 0-.36 1.98v.12a1.8 1.8 0 0 0 1.66 1.1h.18a2.18 2.18 0 1 1 0 4.36h-.1A1.8 1.8 0 0 0 19.4 15Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </summary>
+
+              <div class="absolute right-0 top-12 z-20 mt-3 w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-slate-100 bg-white p-4 shadow-lg">
+                <div class="mb-3">
+                  <p class="text-sm font-medium text-slate-500">バックアップ</p>
+                  <h2 class="mt-1 text-base font-bold text-slate-800">CSV書き出し・読み込み</h2>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <button
+                    id="exportCsvButton"
+                    type="button"
+                    class="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900 active:scale-[0.99]"
+                  >
+                    書き出し
+                  </button>
+                  <button
+                    id="importCsvButton"
+                    type="button"
+                    class="rounded-lg bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-[0.99]"
+                  >
+                    読み込み
+                  </button>
+                </div>
+
+                <input id="importCsvInput" type="file" accept=".csv,text/csv" class="hidden">
+                <p class="mt-3 text-xs leading-relaxed text-slate-500">
+                  CSVは端末内だけで処理されます。読み込み時は現在のデータに上書きされます。
+                </p>
+              </div>
+            </details>
           </div>
 
           <form id="expenseForm" class="space-y-4 border-b border-slate-100 pb-5">
@@ -288,35 +333,6 @@
             </div>
           </form>
 
-          <div class="mt-5 border-b border-slate-100 pb-5">
-            <div class="mb-3">
-              <p class="text-sm font-medium text-slate-500">バックアップ</p>
-              <h2 class="mt-1 text-base font-bold text-slate-800">CSV書き出し・読み込み</h2>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <button
-                id="exportCsvButton"
-                type="button"
-                class="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900 active:scale-[0.99]"
-              >
-                書き出し
-              </button>
-              <button
-                id="importCsvButton"
-                type="button"
-                class="rounded-lg bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-[0.99]"
-              >
-                読み込み
-              </button>
-            </div>
-
-            <input id="importCsvInput" type="file" accept=".csv,text/csv" class="hidden">
-            <p class="mt-3 text-xs leading-relaxed text-slate-500">
-              CSVは端末内だけで処理されます。読み込み時は現在のデータに上書きされます。
-            </p>
-          </div>
-
           <div class="mt-5">
             <div class="mb-3 flex items-center justify-between">
               <h2 class="text-base font-bold text-slate-800">履歴</h2>
@@ -328,6 +344,13 @@
             </div>
 
             <ul id="historyList" class="space-y-3"></ul>
+            <button
+              id="historyToggleButton"
+              type="button"
+              class="mt-3 hidden w-full rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 active:scale-[0.99]"
+            >
+              すべて表示
+            </button>
           </div>
         </div>
       </section>
@@ -369,6 +392,7 @@
     const historyList = document.getElementById('historyList');
     const emptyState = document.getElementById('emptyState');
     const itemCount = document.getElementById('itemCount');
+    const historyToggleButton = document.getElementById('historyToggleButton');
     const splashScreen = document.getElementById('splashScreen');
     const exportCsvButton = document.getElementById('exportCsvButton');
     const importCsvButton = document.getElementById('importCsvButton');
@@ -380,12 +404,14 @@
     const manageDot = document.getElementById('manageDot');
     const categories = ['食費', '日用品', '趣味', 'その他'];
     const subscriptionCycles = ['monthly', 'yearly'];
+    const HISTORY_PREVIEW_LIMIT = 3;
     const chartColors = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa'];
     const emptyChartColors = ['#e2e8f0', '#e2e8f0', '#e2e8f0', '#e2e8f0'];
 
     let expenses = loadExpenses();
     let subscriptions = loadSubscriptions();
     let monthlyBudget = loadBudget();
+    let isHistoryExpanded = false;
     let categoryChart;
 
     function loadExpenses() {
@@ -980,6 +1006,12 @@
       };
     }
 
+    function getSubscriptionYearlyCost(subscription) {
+      return subscription.cycle === 'monthly'
+        ? subscription.amount * 12
+        : subscription.amount;
+    }
+
     function createSubscriptionItem(subscription) {
       const item = document.createElement('li');
       item.className = 'flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-4';
@@ -1048,18 +1080,30 @@
       updateCategoryChart(categoryTotals, total);
       updateCategoryLegend(categoryTotals, total);
       budgetInput.value = monthlyBudget;
-      itemCount.textContent = `${expenses.length}件`;
-      emptyState.classList.toggle('hidden', expenses.length > 0);
-      historyList.innerHTML = '';
-
-      expenses
+      const sortedExpenses = expenses
         .slice()
         .sort((a, b) => {
           const dateDiff = getExpenseTimestamp(b) - getExpenseTimestamp(a);
           if (dateDiff !== 0) return dateDiff;
 
           return new Date(b.createdAt) - new Date(a.createdAt);
-        })
+        });
+      const visibleExpenses = isHistoryExpanded
+        ? sortedExpenses
+        : sortedExpenses.slice(0, HISTORY_PREVIEW_LIMIT);
+
+      itemCount.textContent = isHistoryExpanded || expenses.length <= HISTORY_PREVIEW_LIMIT
+        ? `${expenses.length}件`
+        : `最新${visibleExpenses.length}件 / 全${expenses.length}件`;
+      emptyState.classList.toggle('hidden', expenses.length > 0);
+      historyList.innerHTML = '';
+      historyList.className = isHistoryExpanded
+        ? 'max-h-72 space-y-3 overflow-y-auto pr-1'
+        : 'space-y-3';
+      historyToggleButton.classList.toggle('hidden', expenses.length <= HISTORY_PREVIEW_LIMIT);
+      historyToggleButton.textContent = isHistoryExpanded ? '最新3件だけ表示' : 'すべて表示';
+
+      visibleExpenses
         .forEach((expense) => {
           historyList.appendChild(createHistoryItem(expense));
         });
@@ -1191,6 +1235,9 @@
       if (!shouldDelete) return;
 
       const previousSubscriptions = subscriptions;
+      const deletedSubscription = subscriptions.find((subscription) => {
+        return subscription.id === deleteButton.dataset.subscriptionId;
+      });
       subscriptions = subscriptions.filter((subscription) => {
         return subscription.id !== deleteButton.dataset.subscriptionId;
       });
@@ -1200,9 +1247,17 @@
         return;
       }
       render();
+      if (deletedSubscription) {
+        window.alert(`年間で${formatYen(getSubscriptionYearlyCost(deletedSubscription))}削減できます。`);
+      }
     });
 
     panelTrack.addEventListener('scroll', updatePanelIndicator, { passive: true });
+
+    historyToggleButton.addEventListener('click', () => {
+      isHistoryExpanded = !isHistoryExpanded;
+      render();
+    });
 
     exportCsvButton.addEventListener('click', () => {
       exportCsvBackup();
