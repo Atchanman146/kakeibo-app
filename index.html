@@ -78,6 +78,12 @@
       scroll-snap-align: start;
       scroll-snap-stop: always;
     }
+
+    .app-shell {
+      height: 100vh;
+      height: 100dvh;
+      padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    }
   </style>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-800">
@@ -85,7 +91,7 @@
     <img src="icon.png" alt="" class="splash-logo">
   </div>
 
-  <main class="mx-auto flex h-screen w-full max-w-md flex-col overflow-hidden px-4 py-5">
+  <main class="app-shell mx-auto flex w-full max-w-md flex-col overflow-hidden px-4 pt-5">
     <header class="shrink-0 rounded-lg bg-gradient-to-r from-emerald-100 to-teal-100 px-5 py-4 shadow-sm">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Today</p>
       <p id="todayLabel" class="mt-1 text-2xl font-bold tracking-normal text-slate-900">Saturday, Jul 4</p>
@@ -418,8 +424,18 @@
       };
     }
 
+    function saveToStorage(key, value) {
+      try {
+        localStorage.setItem(key, value);
+        return true;
+      } catch {
+        window.alert('データの保存に失敗しました。ブラウザの空き容量や設定を確認してください。');
+        return false;
+      }
+    }
+
     function saveExpenses() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+      return saveToStorage(STORAGE_KEY, JSON.stringify(expenses));
     }
 
     function loadSubscriptions() {
@@ -457,7 +473,7 @@
     }
 
     function saveSubscriptions() {
-      localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(subscriptions));
+      return saveToStorage(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(subscriptions));
     }
 
     function createId() {
@@ -505,12 +521,15 @@
     }
 
     function loadBudget() {
-      const savedBudget = Number(localStorage.getItem(BUDGET_STORAGE_KEY));
+      const savedBudgetValue = localStorage.getItem(BUDGET_STORAGE_KEY);
+      if (savedBudgetValue === null) return DEFAULT_BUDGET;
+
+      const savedBudget = Number(savedBudgetValue);
       return Number.isFinite(savedBudget) && savedBudget >= 0 ? savedBudget : DEFAULT_BUDGET;
     }
 
     function saveBudget() {
-      localStorage.setItem(BUDGET_STORAGE_KEY, String(monthlyBudget));
+      return saveToStorage(BUDGET_STORAGE_KEY, String(monthlyBudget));
     }
 
     function formatYen(value) {
@@ -527,17 +546,17 @@
 
     function protectCsvText(value) {
       const text = String(value ?? '');
-      return /^[=+\-@]/.test(text) ? `'${text}` : text;
+      return /^[\s\t\r\n]*[=+\-@]/.test(text) ? `'${text}` : text;
     }
 
     function restoreCsvText(value) {
       const text = String(value ?? '');
-      return /^'[=+\-@]/.test(text) ? text.slice(1) : text;
+      return /^'[\s\t\r\n]*[=+\-@]/.test(text) ? text.slice(1) : text;
     }
 
     function escapeCsvCell(value) {
       const text = protectCsvText(value);
-      const escaped = text.replaceAll('"', '""');
+      const escaped = text.replace(/"/g, '""');
       return /[",\r\n]/.test(escaped) ? `"${escaped}"` : escaped;
     }
 
@@ -546,6 +565,7 @@
       let row = [];
       let cell = '';
       let inQuotes = false;
+      let quoteClosed = false;
       const source = text.replace(/^\uFEFF/, '');
 
       for (let index = 0; index < source.length; index += 1) {
@@ -559,11 +579,33 @@
         }
 
         if (char === '"') {
-          inQuotes = !inQuotes;
+          if (inQuotes) {
+            inQuotes = false;
+            quoteClosed = true;
+            continue;
+          }
+
+          if (cell === '') {
+            inQuotes = true;
+            continue;
+          }
+
+          throw new Error('CSVの引用符の位置が正しくありません。');
+        }
+
+        if (quoteClosed && char !== ',' && char !== '\n' && char !== '\r') {
+          throw new Error('CSVの引用符の後に不要な文字があります。');
+        }
+
+        if (quoteClosed && char === ',') {
+          quoteClosed = false;
+          row.push(cell);
+          cell = '';
           continue;
         }
 
         if (char === ',' && !inQuotes) {
+          quoteClosed = false;
           row.push(cell);
           cell = '';
           continue;
@@ -579,6 +621,7 @@
           }
           row = [];
           cell = '';
+          quoteClosed = false;
           continue;
         }
 
@@ -661,12 +704,20 @@
         throw new Error('このアプリ用のCSVではありません。');
       }
 
+      const requiredHeaders = ['type', 'id', 'amount', 'category', 'expenseDate', 'cycle', 'name', 'createdAt', 'budget'];
+      const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
+      if (missingHeaders.length > 0) {
+        throw new Error(`CSVの項目が不足しています: ${missingHeaders.join(', ')}`);
+      }
+
       let importedBudget = monthlyBudget;
       const importedExpenses = [];
       const importedSubscriptions = [];
+      const invalidRows = [];
 
-      rows.slice(1).forEach((row) => {
+      rows.slice(1).forEach((row, rowIndex) => {
         const record = {};
+        const rowNumber = rowIndex + 2;
         headers.forEach((header, index) => {
           record[header] = row[index] ?? '';
         });
@@ -677,6 +728,8 @@
           const budget = Number(record.budget);
           if (Number.isFinite(budget) && budget >= 0) {
             importedBudget = Math.round(budget);
+          } else {
+            invalidRows.push(`${rowNumber}行目: 予算の金額が正しくありません`);
           }
           return;
         }
@@ -692,6 +745,8 @@
 
           if (normalizedExpense) {
             importedExpenses.push(normalizedExpense);
+          } else {
+            invalidRows.push(`${rowNumber}行目: 支出データが正しくありません`);
           }
           return;
         }
@@ -707,21 +762,34 @@
 
           if (normalizedSubscription) {
             importedSubscriptions.push(normalizedSubscription);
+          } else {
+            invalidRows.push(`${rowNumber}行目: 固定費データが正しくありません`);
           }
+          return;
         }
+
+        invalidRows.push(`${rowNumber}行目: データ種別が正しくありません`);
       });
+
+      if (invalidRows.length > 0) {
+        const preview = invalidRows.slice(0, 5).join('\n');
+        const suffix = invalidRows.length > 5 ? `\nほか ${invalidRows.length - 5}件` : '';
+        throw new Error(`CSVに読み込めない行があります。\n${preview}${suffix}`);
+      }
 
       const shouldImport = window.confirm(
         `CSVを読み込みますか？\n支出 ${importedExpenses.length}件、固定費 ${importedSubscriptions.length}件を現在のデータに上書きします。`
       );
       if (!shouldImport) return;
 
+      const saved = saveToStorage(STORAGE_KEY, JSON.stringify(importedExpenses))
+        && saveToStorage(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(importedSubscriptions))
+        && saveToStorage(BUDGET_STORAGE_KEY, String(importedBudget));
+      if (!saved) return;
+
       expenses = importedExpenses;
       subscriptions = importedSubscriptions;
       monthlyBudget = importedBudget;
-      saveExpenses();
-      saveSubscriptions();
-      saveBudget();
       render();
       window.alert('CSVの読み込みが完了しました。');
     }
@@ -1008,8 +1076,13 @@
         return;
       }
 
+      const previousBudget = monthlyBudget;
       monthlyBudget = Math.round(budget);
-      saveBudget();
+      if (!saveBudget()) {
+        monthlyBudget = previousBudget;
+        render();
+        return;
+      }
       render();
     });
 
@@ -1029,15 +1102,20 @@
 
       const category = categories.includes(categoryInput.value) ? categoryInput.value : 'その他';
 
-      expenses.push({
+      const expense = {
         id: createId(),
         amount: Math.round(amount),
         category,
         expenseDate: expenseDateInput.value,
         createdAt: new Date().toISOString()
-      });
+      };
 
-      saveExpenses();
+      expenses.push(expense);
+      if (!saveExpenses()) {
+        expenses = expenses.filter((savedExpense) => savedExpense.id !== expense.id);
+        render();
+        return;
+      }
       render();
       form.reset();
       categoryInput.value = '食費';
@@ -1064,15 +1142,20 @@
         return;
       }
 
-      subscriptions.push({
+      const subscription = {
         id: createId(),
         name: name.slice(0, 40),
         amount: Math.round(amount),
         cycle,
         createdAt: new Date().toISOString()
-      });
+      };
 
-      saveSubscriptions();
+      subscriptions.push(subscription);
+      if (!saveSubscriptions()) {
+        subscriptions = subscriptions.filter((savedSubscription) => savedSubscription.id !== subscription.id);
+        render();
+        return;
+      }
       render();
       subscriptionForm.reset();
       subscriptionCycleInput.value = 'monthly';
@@ -1080,28 +1163,42 @@
     });
 
     historyList.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
+
       const deleteButton = event.target.closest('button[data-id]');
       if (!deleteButton) return;
 
       const shouldDelete = window.confirm('この支出を削除しますか？');
       if (!shouldDelete) return;
 
+      const previousExpenses = expenses;
       expenses = expenses.filter((expense) => expense.id !== deleteButton.dataset.id);
-      saveExpenses();
+      if (!saveExpenses()) {
+        expenses = previousExpenses;
+        render();
+        return;
+      }
       render();
     });
 
     subscriptionList.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
+
       const deleteButton = event.target.closest('button[data-subscription-id]');
       if (!deleteButton) return;
 
       const shouldDelete = window.confirm('この固定費を削除しますか？');
       if (!shouldDelete) return;
 
+      const previousSubscriptions = subscriptions;
       subscriptions = subscriptions.filter((subscription) => {
         return subscription.id !== deleteButton.dataset.subscriptionId;
       });
-      saveSubscriptions();
+      if (!saveSubscriptions()) {
+        subscriptions = previousSubscriptions;
+        render();
+        return;
+      }
       render();
     });
 
