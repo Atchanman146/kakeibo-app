@@ -173,6 +173,83 @@
       </form>
     </section>
 
+    <section class="mt-5 rounded-lg bg-white p-5 shadow-sm">
+      <div class="mb-4">
+        <p class="text-sm font-medium text-slate-500">サブスク・固定費</p>
+        <h2 class="mt-1 text-xl font-bold text-slate-900">毎月かかるお金</h2>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="rounded-lg bg-teal-50 p-4">
+          <p class="text-xs font-semibold text-teal-700">合計月額コスト</p>
+          <p id="subscriptionMonthlyTotal" class="mt-2 text-2xl font-bold text-teal-900">¥0</p>
+        </div>
+        <div class="rounded-lg bg-indigo-50 p-4">
+          <p class="text-xs font-semibold text-indigo-700">合計年額コスト</p>
+          <p id="subscriptionYearlyTotal" class="mt-2 text-2xl font-bold text-indigo-900">¥0</p>
+        </div>
+      </div>
+
+      <form id="subscriptionForm" class="mt-5 space-y-4 border-b border-slate-100 pb-5">
+        <div>
+          <label for="subscriptionName" class="block text-sm font-semibold text-slate-700">アイテム名</label>
+          <input
+            id="subscriptionName"
+            type="text"
+            maxlength="40"
+            placeholder="例: Netflix, 家賃"
+            class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
+            required
+          >
+        </div>
+
+        <div>
+          <label for="subscriptionAmount" class="block text-sm font-semibold text-slate-700">金額</label>
+          <input
+            id="subscriptionAmount"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            step="1"
+            placeholder="例: 1200"
+            class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
+            required
+          >
+        </div>
+
+        <div>
+          <label for="subscriptionCycle" class="block text-sm font-semibold text-slate-700">支払サイクル</label>
+          <select
+            id="subscriptionCycle"
+            class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
+          >
+            <option value="monthly">月額</option>
+            <option value="yearly">年額</option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          class="w-full rounded-lg bg-teal-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.99]"
+        >
+          固定費を追加
+        </button>
+      </form>
+
+      <div class="mt-5">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-base font-bold text-slate-800">固定費一覧</h2>
+          <p id="subscriptionCount" class="text-sm text-slate-500">0件</p>
+        </div>
+
+        <div id="subscriptionEmptyState" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-500">
+          まだ固定費がありません
+        </div>
+
+        <ul id="subscriptionList" class="space-y-3"></ul>
+      </div>
+    </section>
+
     <section class="mt-6 flex-1">
       <div class="mb-3 flex items-center justify-between">
         <h1 class="text-lg font-bold text-slate-800">履歴</h1>
@@ -190,29 +267,41 @@
   <script>
     const STORAGE_KEY = 'simple-budget-expenses';
     const BUDGET_STORAGE_KEY = 'simple-budget-monthly-budget';
+    const SUBSCRIPTION_STORAGE_KEY = 'simple-budget-subscriptions';
     const DEFAULT_BUDGET = 50000;
     const form = document.getElementById('expenseForm');
     const budgetForm = document.getElementById('budgetForm');
+    const subscriptionForm = document.getElementById('subscriptionForm');
     const todayLabel = document.getElementById('todayLabel');
     const expenseDateInput = document.getElementById('expenseDate');
     const amountInput = document.getElementById('amount');
     const categoryInput = document.getElementById('category');
     const budgetInput = document.getElementById('budget');
+    const subscriptionNameInput = document.getElementById('subscriptionName');
+    const subscriptionAmountInput = document.getElementById('subscriptionAmount');
+    const subscriptionCycleInput = document.getElementById('subscriptionCycle');
     const monthlyTotal = document.getElementById('monthlyTotal');
     const chartCenterTotal = document.getElementById('chartCenterTotal');
     const categoryChartCanvas = document.getElementById('categoryChart');
     const categoryLegend = document.getElementById('categoryLegend');
     const remainingBudget = document.getElementById('remainingBudget');
     const dailyAvailable = document.getElementById('dailyAvailable');
+    const subscriptionMonthlyTotal = document.getElementById('subscriptionMonthlyTotal');
+    const subscriptionYearlyTotal = document.getElementById('subscriptionYearlyTotal');
+    const subscriptionList = document.getElementById('subscriptionList');
+    const subscriptionEmptyState = document.getElementById('subscriptionEmptyState');
+    const subscriptionCount = document.getElementById('subscriptionCount');
     const historyList = document.getElementById('historyList');
     const emptyState = document.getElementById('emptyState');
     const itemCount = document.getElementById('itemCount');
     const splashScreen = document.getElementById('splashScreen');
     const categories = ['食費', '日用品', '趣味', 'その他'];
+    const subscriptionCycles = ['monthly', 'yearly'];
     const chartColors = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa'];
     const emptyChartColors = ['#e2e8f0', '#e2e8f0', '#e2e8f0', '#e2e8f0'];
 
     let expenses = loadExpenses();
+    let subscriptions = loadSubscriptions();
     let monthlyBudget = loadBudget();
     let categoryChart;
 
@@ -254,6 +343,44 @@
 
     function saveExpenses() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+    }
+
+    function loadSubscriptions() {
+      try {
+        const savedSubscriptions = JSON.parse(localStorage.getItem(SUBSCRIPTION_STORAGE_KEY)) || [];
+        if (!Array.isArray(savedSubscriptions)) return [];
+
+        return savedSubscriptions
+          .map(normalizeSubscription)
+          .filter(Boolean);
+      } catch {
+        return [];
+      }
+    }
+
+    function normalizeSubscription(subscription) {
+      if (!subscription || typeof subscription !== 'object') return null;
+
+      const name = String(subscription.name || '').trim().slice(0, 40);
+      const amount = Number(subscription.amount);
+      const cycle = subscriptionCycles.includes(subscription.cycle) ? subscription.cycle : 'monthly';
+      const createdAt = Number.isNaN(new Date(subscription.createdAt).getTime())
+        ? new Date().toISOString()
+        : subscription.createdAt;
+
+      if (!name || !Number.isFinite(amount) || amount <= 0) return null;
+
+      return {
+        id: typeof subscription.id === 'string' && subscription.id ? subscription.id : createId(),
+        name,
+        amount: Math.round(amount),
+        cycle,
+        createdAt
+      };
+    }
+
+    function saveSubscriptions() {
+      localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(subscriptions));
     }
 
     function createId() {
@@ -315,6 +442,10 @@
         currency: 'JPY',
         maximumFractionDigits: 0
       }).format(value);
+    }
+
+    function getCycleLabel(cycle) {
+      return cycle === 'yearly' ? '年額' : '月額';
     }
 
     function formatToday(date) {
@@ -466,6 +597,73 @@
       return item;
     }
 
+    function getSubscriptionTotals() {
+      const monthlyBaseTotal = subscriptions
+        .filter((subscription) => subscription.cycle === 'monthly')
+        .reduce((sum, subscription) => sum + subscription.amount, 0);
+      const yearlyBaseTotal = subscriptions
+        .filter((subscription) => subscription.cycle === 'yearly')
+        .reduce((sum, subscription) => sum + subscription.amount, 0);
+
+      // 年額は月あたりに割り、画面表示は1円単位に丸めます。
+      return {
+        monthly: Math.round(monthlyBaseTotal + yearlyBaseTotal / 12),
+        yearly: Math.round(monthlyBaseTotal * 12 + yearlyBaseTotal)
+      };
+    }
+
+    function createSubscriptionItem(subscription) {
+      const item = document.createElement('li');
+      item.className = 'flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-4';
+
+      const detail = document.createElement('div');
+      detail.className = 'min-w-0';
+
+      const name = document.createElement('p');
+      name.className = 'truncate text-base font-bold text-slate-900';
+      name.textContent = subscription.name;
+
+      const meta = document.createElement('div');
+      meta.className = 'mt-2 flex flex-wrap items-center gap-2';
+
+      const cycle = document.createElement('span');
+      cycle.className = 'rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700';
+      cycle.textContent = getCycleLabel(subscription.cycle);
+
+      const amount = document.createElement('span');
+      amount.className = 'text-sm font-semibold text-slate-600';
+      amount.textContent = formatYen(subscription.amount);
+
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'shrink-0 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-rose-50 hover:text-rose-600';
+      deleteButton.dataset.subscriptionId = subscription.id;
+      deleteButton.textContent = '削除';
+
+      meta.append(cycle, amount);
+      detail.append(name, meta);
+      item.append(detail, deleteButton);
+
+      return item;
+    }
+
+    function renderSubscriptions() {
+      const totals = getSubscriptionTotals();
+
+      subscriptionMonthlyTotal.textContent = formatYen(totals.monthly);
+      subscriptionYearlyTotal.textContent = formatYen(totals.yearly);
+      subscriptionCount.textContent = `${subscriptions.length}件`;
+      subscriptionEmptyState.classList.toggle('hidden', subscriptions.length > 0);
+      subscriptionList.innerHTML = '';
+
+      subscriptions
+        .slice()
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .forEach((subscription) => {
+          subscriptionList.appendChild(createSubscriptionItem(subscription));
+        });
+    }
+
     function render() {
       const currentMonthExpenses = getCurrentMonthExpenses();
       const total = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -497,6 +695,8 @@
         .forEach((expense) => {
           historyList.appendChild(createHistoryItem(expense));
         });
+
+      renderSubscriptions();
     }
 
     budgetForm.addEventListener('submit', (event) => {
@@ -545,6 +745,40 @@
       amountInput.focus();
     });
 
+    subscriptionForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const name = subscriptionNameInput.value.trim();
+      const amount = Number(subscriptionAmountInput.value);
+      const cycle = subscriptionCycles.includes(subscriptionCycleInput.value)
+        ? subscriptionCycleInput.value
+        : 'monthly';
+
+      if (!name) {
+        subscriptionNameInput.focus();
+        return;
+      }
+
+      if (!Number.isFinite(amount) || amount <= 0) {
+        subscriptionAmountInput.focus();
+        return;
+      }
+
+      subscriptions.push({
+        id: createId(),
+        name: name.slice(0, 40),
+        amount: Math.round(amount),
+        cycle,
+        createdAt: new Date().toISOString()
+      });
+
+      saveSubscriptions();
+      render();
+      subscriptionForm.reset();
+      subscriptionCycleInput.value = 'monthly';
+      subscriptionNameInput.focus();
+    });
+
     historyList.addEventListener('click', (event) => {
       const deleteButton = event.target.closest('button[data-id]');
       if (!deleteButton) return;
@@ -554,6 +788,20 @@
 
       expenses = expenses.filter((expense) => expense.id !== deleteButton.dataset.id);
       saveExpenses();
+      render();
+    });
+
+    subscriptionList.addEventListener('click', (event) => {
+      const deleteButton = event.target.closest('button[data-subscription-id]');
+      if (!deleteButton) return;
+
+      const shouldDelete = window.confirm('この固定費を削除しますか？');
+      if (!shouldDelete) return;
+
+      subscriptions = subscriptions.filter((subscription) => {
+        return subscription.id !== deleteButton.dataset.subscriptionId;
+      });
+      saveSubscriptions();
       render();
     });
 
