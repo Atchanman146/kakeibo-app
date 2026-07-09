@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="app-version" content="2026.07.09-pages-check">
   <title>シンプル家計簿</title>
   <link rel="apple-touch-icon" href="icon.png">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -219,6 +220,9 @@
               <input id="importCsvInput" type="file" accept=".csv,text/csv" class="hidden">
               <p class="mt-3 text-xs leading-relaxed text-slate-500">
                 CSVは端末内だけで処理されます。読み込み時は現在のデータに上書きされます。
+              </p>
+              <p class="mt-3 border-t border-slate-100 pt-3 text-[11px] font-medium text-slate-400">
+                version 2026.07.09-pages-check
               </p>
             </div>
           </details>
@@ -436,6 +440,8 @@
   </div>
 
   <script>
+    document.title = 'シンプル家計簿';
+
     const STORAGE_KEY = 'simple-budget-expenses';
     const BUDGET_STORAGE_KEY = 'simple-budget-monthly-budget';
     const SUBSCRIPTION_STORAGE_KEY = 'simple-budget-subscriptions';
