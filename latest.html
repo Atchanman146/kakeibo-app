@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="app-version" content="2026.07.09-cache-fix">
+  <title>シンプル家計簿</title>
+  <link rel="apple-touch-icon" href="icon.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.min.js" defer></script>
+  <style>
+    #splashScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #a3e6d2 0%, #76d7c4 100%);
+      opacity: 1;
+      transition: opacity 500ms ease, visibility 500ms ease;
+    }
+
+    #splashScreen.splash-hidden {
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .splash-logo {
+      width: 132px;
+      height: 132px;
+      border-radius: 32px;
+      box-shadow: 0 24px 60px rgba(15, 118, 110, 0.22);
+      opacity: 0;
+      transform: scale(0.9);
+      animation: splashLogoIn 700ms ease forwards;
+    }
+
+    @keyframes splashLogoIn {
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    input[type="date"] {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-height: 52px;
+      box-sizing: border-box;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input[type="date"]::-webkit-date-and-time-value {
+      text-align: left;
+    }
+
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      margin-left: auto;
+    }
+
+    .app-shell {
+      height: 100vh;
+      height: 100dvh;
+      padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .celebration-pop {
+      animation: celebrationPop 420ms ease-out both;
+    }
+
+    @keyframes celebrationPop {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-800">
+  <div id="splashScreen" aria-hidden="true">
+    <img src="icon.png" alt="" class="splash-logo">
+  </div>
+
+  <main class="app-shell mx-auto flex w-full max-w-md flex-col overflow-hidden px-4 pt-5">
+    <header class="shrink-0 rounded-lg bg-gradient-to-r from-emerald-100 to-teal-100 px-5 py-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Today</p>
+      <p id="todayLabel" class="mt-1 text-2xl font-bold tracking-normal text-slate-900">Saturday, Jul 4</p>
+    </header>
+
+    <div id="appPanels" class="mt-4 min-h-0 flex-1 overflow-hidden">
+      <section id="overviewPanel" class="h-full overflow-y-auto rounded-lg bg-white p-5 shadow-sm">
+        <div class="mb-5">
+          <p class="text-sm font-medium text-slate-500">今月の家計簿概要</p>
+          <h1 class="mt-1 text-2xl font-bold text-slate-900">お金の見える化</h1>
+        </div>
+
+        <div class="rounded-lg bg-slate-50 p-5">
+          <p class="text-sm font-medium text-slate-500">今月の総支出</p>
+          <p id="monthlyTotal" class="mt-3 text-4xl font-bold tracking-normal text-slate-900">¥0</p>
+
+          <div class="mt-5 flex justify-center">
+            <div class="relative h-40 w-40">
+              <canvas id="categoryChart" aria-label="カテゴリ別の支出割合"></canvas>
+              <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                <p class="text-[11px] font-semibold text-slate-400">総支出</p>
+                <p id="chartCenterTotal" class="mt-1 max-w-28 break-words text-lg font-bold leading-tight text-slate-900">¥0</p>
+              </div>
+            </div>
+          </div>
+          <div id="categoryLegend" class="mt-4 grid grid-cols-2 gap-2 text-xs"></div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="rounded-lg bg-emerald-50 p-4">
+            <p class="text-xs font-semibold text-emerald-700">今月の残り予算</p>
+            <p id="remainingBudget" class="mt-2 text-xl font-bold text-emerald-900">¥0</p>
+          </div>
+          <div class="rounded-lg bg-blue-50 p-4">
+            <p class="text-xs font-semibold text-blue-700">今日使えるお金</p>
+            <p id="dailyAvailable" class="mt-2 text-xl font-bold text-blue-900">¥0</p>
+          </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="rounded-lg bg-teal-50 p-4">
+            <p class="text-xs font-semibold text-teal-700">合計月額コスト</p>
+            <p id="subscriptionMonthlyTotal" class="mt-2 text-2xl font-bold text-teal-900">¥0</p>
+          </div>
+          <div class="rounded-lg bg-indigo-50 p-4">
+            <p class="text-xs font-semibold text-indigo-700">合計年額コスト</p>
+            <p id="subscriptionYearlyTotal" class="mt-2 text-2xl font-bold text-indigo-900">¥0</p>
+          </div>
+        </div>
+
+        <div class="mt-4 rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium text-emerald-700">今月の節約目標</p>
+              <p id="savingGoalAmount" class="mt-2 text-2xl font-bold text-emerald-950">¥10,000</p>
+            </div>
+            <div class="rounded-full bg-white/80 px-3 py-1 text-sm font-bold text-emerald-700 shadow-sm">
+              <span id="savingGoalProgress">0%</span>
+            </div>
+          </div>
+
+          <div class="mt-4 h-3 overflow-hidden rounded-full bg-white">
+            <div id="savingGoalProgressBar" class="h-full w-0 rounded-full bg-emerald-500 transition-all duration-500"></div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div class="rounded-lg bg-white/75 p-3">
+              <p class="text-xs font-semibold text-slate-500">あといくら</p>
+              <p id="savingGoalRemaining" class="mt-1 text-lg font-bold text-slate-900">¥0</p>
+            </div>
+            <div class="rounded-lg bg-white/75 p-3">
+              <p class="text-xs font-semibold text-slate-500">今日のひとこと</p>
+              <p id="savingGoalShortMessage" class="mt-1 text-sm font-semibold text-emerald-800">無理なくいきましょう</p>
+            </div>
+          </div>
+
+          <p id="savingGoalMessage" class="mt-4 rounded-lg bg-white/70 px-4 py-3 text-sm leading-relaxed text-slate-600">
+            目標を設定すると、今月の残り予算から達成状況を見られます。
+          </p>
+        </div>
+      </section>
+
+      <section id="inputPanel" class="hidden h-full overflow-y-auto rounded-lg bg-white p-5 shadow-sm">
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p class="text-sm font-medium text-slate-500">家計簿入力</p>
+            <h2 class="mt-1 text-xl font-bold text-slate-900">支出と予算</h2>
+          </div>
+
+          <details class="relative">
+            <summary class="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full bg-slate-50 text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-100 active:scale-[0.98]">
+              <span class="sr-only">設定</span>
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.06.06a2.18 2.18 0 1 1-3.08 3.08l-.06-.06a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.66v.18a2.18 2.18 0 1 1-4.36 0v-.1A1.8 1.8 0 0 0 8.1 19.7a1.8 1.8 0 0 0-1.98.36l-.06.06a2.18 2.18 0 1 1-3.08-3.08l.06-.06A1.8 1.8 0 0 0 3.4 15a1.8 1.8 0 0 0-1.66-1.1h-.18a2.18 2.18 0 1 1 0-4.36h.1A1.8 1.8 0 0 0 3.4 8.4a1.8 1.8 0 0 0-.36-1.98l-.06-.06a2.18 2.18 0 1 1 3.08-3.08l.06.06A1.8 1.8 0 0 0 8.1 3.7h.12A1.8 1.8 0 0 0 9.24 2v-.18a2.18 2.18 0 1 1 4.36 0v.1a1.8 1.8 0 0 0 1.1 1.66 1.8 1.8 0 0 0 1.98-.36l.06-.06a2.18 2.18 0 1 1 3.08 3.08l-.06.06a1.8 1.8 0 0 0-.36 1.98v.12a1.8 1.8 0 0 0 1.66 1.1h.18a2.18 2.18 0 1 1 0 4.36h-.1A1.8 1.8 0 0 0 19.4 15Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </summary>
+
+            <div class="absolute right-0 top-12 z-20 mt-3 w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-slate-100 bg-white p-4 shadow-lg">
+              <div class="mb-3">
+                <p class="text-sm font-medium text-slate-500">バックアップ</p>
+                <h2 class="mt-1 text-base font-bold text-slate-800">CSV書き出し・読み込み</h2>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <button
+                  id="exportCsvButton"
+                  type="button"
+                  class="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900 active:scale-[0.99]"
+                >
+                  書き出し
+                </button>
+                <button
+                  id="importCsvButton"
+                  type="button"
+                  class="rounded-lg bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-[0.99]"
+                >
+                  読み込み
+                </button>
+              </div>
+
+              <input id="importCsvInput" type="file" accept=".csv,text/csv" class="hidden">
+              <p class="mt-3 text-xs leading-relaxed text-slate-500">
+                CSVは端末内だけで処理されます。読み込み時は現在のデータに上書きされます。
+              </p>
+              <p class="mt-3 border-t border-slate-100 pt-3 text-[11px] font-medium text-slate-400">
+                version 2026.07.09-cache-fix
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <form id="expenseForm" class="space-y-4 border-b border-slate-100 pb-5">
+          <div>
+            <label for="expenseDate" class="block text-sm font-semibold text-slate-700">日付</label>
+            <input
+              id="expenseDate"
+              type="date"
+              class="mt-2 block w-full max-w-full rounded-lg border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-left text-base font-medium text-slate-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+              required
+            >
+          </div>
+
+          <div>
+            <label for="amount" class="block text-sm font-semibold text-slate-700">金額</label>
+            <input
+              id="amount"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              step="1"
+              placeholder="例: 1200"
+              class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+              required
+            >
+          </div>
+
+          <div>
+            <label for="category" class="block text-sm font-semibold text-slate-700">カテゴリ</label>
+            <select
+              id="category"
+              class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            >
+              <option value="食費">食費</option>
+              <option value="日用品">日用品</option>
+              <option value="趣味">趣味</option>
+              <option value="その他">その他</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            class="w-full rounded-lg bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99]"
+          >
+            追加
+          </button>
+        </form>
+
+        <form id="budgetForm" class="mt-5 border-b border-slate-100 pb-5">
+          <label for="budget" class="block text-sm font-semibold text-slate-700">今月の予算</label>
+          <div class="mt-2 flex gap-2">
+            <input
+              id="budget"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              step="1000"
+              class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+              required
+            >
+            <button
+              type="submit"
+              class="shrink-0 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.99]"
+            >
+              設定
+            </button>
+          </div>
+        </form>
+
+        <form id="savingGoalForm" class="mt-5 border-b border-slate-100 pb-5">
+          <label for="savingGoalInput" class="block text-sm font-semibold text-slate-700">今月の節約目標</label>
+          <div class="mt-2 flex gap-2">
+            <input
+              id="savingGoalInput"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              step="1000"
+              class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+              required
+            >
+            <button
+              type="submit"
+              class="shrink-0 rounded-lg bg-teal-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.99]"
+            >
+              保存
+            </button>
+          </div>
+        </form>
+
+        <div class="mt-5">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-800">履歴</h2>
+            <p id="itemCount" class="text-sm text-slate-500">0件</p>
+          </div>
+
+          <div id="emptyState" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-500">
+            まだ支出がありません
+          </div>
+
+          <ul id="historyList" class="space-y-3"></ul>
+          <button
+            id="historyToggleButton"
+            type="button"
+            class="mt-3 hidden w-full rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 active:scale-[0.99]"
+          >
+            すべて表示
+          </button>
+        </div>
+      </section>
+
+      <section id="fixedCostPanel" class="hidden h-full overflow-y-auto rounded-lg bg-white p-5 shadow-sm">
+        <div class="mb-4">
+          <p class="text-sm font-medium text-slate-500">サブスク/固定費の管理</p>
+          <h2 class="mt-1 text-xl font-bold text-slate-900">毎月かかるお金</h2>
+        </div>
+
+        <form id="subscriptionForm" class="space-y-4 border-b border-slate-100 pb-5">
+          <div>
+            <label for="subscriptionName" class="block text-sm font-semibold text-slate-700">アイテム名</label>
+            <input
+              id="subscriptionName"
+              type="text"
+              maxlength="40"
+              placeholder="例: Netflix, 家賃"
+              class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
+              required
+            >
+          </div>
+
+          <div>
+            <label for="subscriptionAmount" class="block text-sm font-semibold text-slate-700">金額</label>
+            <input
+              id="subscriptionAmount"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              step="1"
+              placeholder="例: 1200"
+              class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
+              required
+            >
+          </div>
+
+          <div>
+            <label for="subscriptionCycle" class="block text-sm font-semibold text-slate-700">支払サイクル</label>
+            <select
+              id="subscriptionCycle"
+              class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-100"
+            >
+              <option value="monthly">月額</option>
+              <option value="yearly">年額</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            class="w-full rounded-lg bg-teal-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.99]"
+          >
+            固定費を追加
+          </button>
+        </form>
+
+        <div class="mt-5">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-800">固定費一覧</h2>
+            <p id="subscriptionCount" class="text-sm text-slate-500">0件</p>
+          </div>
+
+          <div id="subscriptionEmptyState" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm text-slate-500">
+            まだ固定費がありません
+          </div>
+
+          <ul id="subscriptionList" class="space-y-3"></ul>
+        </div>
+      </section>
+    </div>
+
+    <nav class="mt-4 shrink-0 rounded-2xl bg-white p-2 shadow-sm" aria-label="メイン画面">
+      <div class="grid grid-cols-3 gap-1">
+        <button id="overviewTab" type="button" data-panel="overview" class="flex flex-col items-center gap-1 rounded-xl bg-emerald-600 px-2 py-2 text-xs font-semibold text-white transition">
+          <span class="text-base leading-none">●</span>
+          <span>概要</span>
+        </button>
+        <button id="inputTab" type="button" data-panel="input" class="flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold text-slate-500 transition">
+          <span class="text-base leading-none">＋</span>
+          <span>入力</span>
+        </button>
+        <button id="fixedCostTab" type="button" data-panel="fixedCost" class="flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold text-slate-500 transition">
+          <span class="text-base leading-none">¥</span>
+          <span>固定費</span>
+        </button>
+      </div>
+    </nav>
+  </main>
+
+  <div id="goalCelebration" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/30 px-6">
+    <div class="celebration-pop w-full max-w-sm rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 p-6 text-center shadow-2xl">
+      <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl shadow-sm">¥</div>
+      <h2 class="mt-4 text-2xl font-bold text-emerald-950">目標達成！</h2>
+      <p id="goalCelebrationMessage" class="mt-3 text-sm leading-relaxed text-emerald-900">
+        今月の節約目標を達成しました。
+      </p>
+      <button
+        id="goalCelebrationClose"
+        type="button"
+        class="mt-5 w-full rounded-lg bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 active:scale-[0.99]"
+      >
+        OK
+      </button>
+    </div>
+  </div>
+
+  <script>
+    document.title = 'シンプル家計簿';
+
+    const STORAGE_KEY = 'simple-budget-expenses';
+    const BUDGET_STORAGE_KEY = 'simple-budget-monthly-budget';
+    const SUBSCRIPTION_STORAGE_KEY = 'simple-budget-subscriptions';
+    const SAVING_GOAL_STORAGE_KEY = 'simple-budget-saving-goal';
+    const SAVING_GOAL_ACHIEVED_MONTH_KEY = 'simple-budget-saving-goal-achieved-month';
+    const DEFAULT_BUDGET = 50000;
+    const DEFAULT_SAVING_GOAL = 10000;
+    const form = document.getElementById('expenseForm');
+    const budgetForm = document.getElementById('budgetForm');
+    const savingGoalForm = document.getElementById('savingGoalForm');
+    const subscriptionForm = document.getElementById('subscriptionForm');
+    const todayLabel = document.getElementById('todayLabel');
+    const expenseDateInput = document.getElementById('expenseDate');
+    const amountInput = document.getElementById('amount');
+    const categoryInput = document.getElementById('category');
+    const budgetInput = document.getElementById('budget');
+    const savingGoalInput = document.getElementById('savingGoalInput');
+    const subscriptionNameInput = document.getElementById('subscriptionName');
+    const subscriptionAmountInput = document.getElementById('subscriptionAmount');
+    const subscriptionCycleInput = document.getElementById('subscriptionCycle');
+    const monthlyTotal = document.getElementById('monthlyTotal');
+    const chartCenterTotal = document.getElementById('chartCenterTotal');
+    const categoryChartCanvas = document.getElementById('categoryChart');
+    const categoryLegend = document.getElementById('categoryLegend');
+    const remainingBudget = document.getElementById('remainingBudget');
+    const dailyAvailable = document.getElementById('dailyAvailable');
+    const savingGoalAmount = document.getElementById('savingGoalAmount');
+    const savingGoalProgress = document.getElementById('savingGoalProgress');
+    const savingGoalProgressBar = document.getElementById('savingGoalProgressBar');
+    const savingGoalRemaining = document.getElementById('savingGoalRemaining');
+    const savingGoalShortMessage = document.getElementById('savingGoalShortMessage');
+    const savingGoalMessage = document.getElementById('savingGoalMessage');
+    const subscriptionMonthlyTotal = document.getElementById('subscriptionMonthlyTotal');
+    const subscriptionYearlyTotal = document.getElementById('subscriptionYearlyTotal');
+    const subscriptionList = document.getElementById('subscriptionList');
+    const subscriptionEmptyState = document.getElementById('subscriptionEmptyState');
+    const subscriptionCount = document.getElementById('subscriptionCount');
+    const historyList = document.getElementById('historyList');
+    const emptyState = document.getElementById('emptyState');
+    const itemCount = document.getElementById('itemCount');
+    const historyToggleButton = document.getElementById('historyToggleButton');
+    const splashScreen = document.getElementById('splashScreen');
+    const exportCsvButton = document.getElementById('exportCsvButton');
+    const importCsvButton = document.getElementById('importCsvButton');
+    const importCsvInput = document.getElementById('importCsvInput');
+    const overviewPanel = document.getElementById('overviewPanel');
+    const inputPanel = document.getElementById('inputPanel');
+    const fixedCostPanel = document.getElementById('fixedCostPanel');
+    const overviewTab = document.getElementById('overviewTab');
+    const inputTab = document.getElementById('inputTab');
+    const fixedCostTab = document.getElementById('fixedCostTab');
+    const tabButtons = [overviewTab, inputTab, fixedCostTab];
+    const goalCelebration = document.getElementById('goalCelebration');
+    const goalCelebrationMessage = document.getElementById('goalCelebrationMessage');
+    const goalCelebrationClose = document.getElementById('goalCelebrationClose');
+    const categories = ['食費', '日用品', '趣味', 'その他'];
+    const subscriptionCycles = ['monthly', 'yearly'];
+    const HISTORY_PREVIEW_LIMIT = 3;
+    const chartColors = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa'];
+    const emptyChartColors = ['#e2e8f0', '#e2e8f0', '#e2e8f0', '#e2e8f0'];
+
+    let expenses = loadExpenses();
+    let subscriptions = loadSubscriptions();
+    let monthlyBudget = loadBudget();
+    let savingGoal = loadSavingGoal();
+    let activePanel = 'overview';
+    let isHistoryExpanded = false;
+    let categoryChart;
+
+    function loadExpenses() {
+      try {
+        const savedExpenses = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        if (!Array.isArray(savedExpenses)) return [];
+
+        return savedExpenses
+          .map(normalizeExpense)
+          .filter(Boolean);
+      } catch {
+        return [];
+      }
+    }
+
+    function normalizeExpense(expense) {
+      if (!expense || typeof expense !== 'object') return null;
+
+      const amount = Number(expense.amount);
+      const category = categories.includes(expense.category) ? expense.category : 'その他';
+      const createdAt = Number.isNaN(new Date(expense.createdAt).getTime())
+        ? new Date().toISOString()
+        : expense.createdAt;
+      const expenseDate = isValidDateInput(expense.expenseDate)
+        ? expense.expenseDate
+        : toDateInputValue(new Date(createdAt));
+
+      if (!Number.isFinite(amount) || amount <= 0) return null;
+
+      return {
+        id: typeof expense.id === 'string' && expense.id ? expense.id : createId(),
+        amount: Math.round(amount),
+        category,
+        expenseDate,
+        createdAt
+      };
+    }
+
+    function saveToStorage(key, value) {
+      try {
+        localStorage.setItem(key, value);
+        return true;
+      } catch {
+        window.alert('データの保存に失敗しました。ブラウザの空き容量や設定を確認してください。');
+        return false;
+      }
+    }
+
+    function saveExpenses() {
+      return saveToStorage(STORAGE_KEY, JSON.stringify(expenses));
+    }
+
+    function loadSubscriptions() {
+      try {
+        const savedSubscriptions = JSON.parse(localStorage.getItem(SUBSCRIPTION_STORAGE_KEY)) || [];
+        if (!Array.isArray(savedSubscriptions)) return [];
+
+        return savedSubscriptions
+          .map(normalizeSubscription)
+          .filter(Boolean);
+      } catch {
+        return [];
+      }
+    }
+
+    function normalizeSubscription(subscription) {
+      if (!subscription || typeof subscription !== 'object') return null;
+
+      const name = String(subscription.name || '').trim().slice(0, 40);
+      const amount = Number(subscription.amount);
+      const cycle = subscriptionCycles.includes(subscription.cycle) ? subscription.cycle : 'monthly';
+      const createdAt = Number.isNaN(new Date(subscription.createdAt).getTime())
+        ? new Date().toISOString()
+        : subscription.createdAt;
+
+      if (!name || !Number.isFinite(amount) || amount <= 0) return null;
+
+      return {
+        id: typeof subscription.id === 'string' && subscription.id ? subscription.id : createId(),
+        name,
+        amount: Math.round(amount),
+        cycle,
+        createdAt
+      };
+    }
+
+    function saveSubscriptions() {
+      return saveToStorage(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(subscriptions));
+    }
+
+    function createId() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+      }
+
+      return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function toDateInputValue(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseLocalDate(dateValue) {
+      if (!dateValue) return new Date();
+
+      const [year, month, day] = dateValue.split('-').map(Number);
+      if (!year || !month || !day) return new Date(dateValue);
+
+      return new Date(year, month - 1, day);
+    }
+
+    function isValidDateInput(dateValue) {
+      if (typeof dateValue !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+        return false;
+      }
+
+      const [year, month, day] = dateValue.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+    }
+
+    function getExpenseDateValue(expense) {
+      return expense.expenseDate || toDateInputValue(new Date(expense.createdAt));
+    }
+
+    function getExpenseTimestamp(expense) {
+      const date = parseLocalDate(getExpenseDateValue(expense));
+      date.setHours(23, 59, 59, 999);
+      return date.getTime();
+    }
+
+    function loadBudget() {
+      const savedBudgetValue = localStorage.getItem(BUDGET_STORAGE_KEY);
+      if (savedBudgetValue === null) return DEFAULT_BUDGET;
+
+      const savedBudget = Number(savedBudgetValue);
+      return Number.isFinite(savedBudget) && savedBudget >= 0 ? savedBudget : DEFAULT_BUDGET;
+    }
+
+    function saveBudget() {
+      return saveToStorage(BUDGET_STORAGE_KEY, String(monthlyBudget));
+    }
+
+    function loadSavingGoal() {
+      const savedGoalValue = localStorage.getItem(SAVING_GOAL_STORAGE_KEY);
+      if (savedGoalValue === null) return DEFAULT_SAVING_GOAL;
+
+      const savedGoal = Number(savedGoalValue);
+      return Number.isFinite(savedGoal) && savedGoal >= 0 ? savedGoal : DEFAULT_SAVING_GOAL;
+    }
+
+    function saveSavingGoal() {
+      return saveToStorage(SAVING_GOAL_STORAGE_KEY, String(savingGoal));
+    }
+
+    function formatYen(value) {
+      return new Intl.NumberFormat('ja-JP', {
+        style: 'currency',
+        currency: 'JPY',
+        maximumFractionDigits: 0
+      }).format(value);
+    }
+
+    function getCycleLabel(cycle) {
+      return cycle === 'yearly' ? '年額' : '月額';
+    }
+
+    function protectCsvText(value) {
+      const text = String(value ?? '');
+      return /^[\s\t\r\n]*[=+\-@]/.test(text) ? `'${text}` : text;
+    }
+
+    function restoreCsvText(value) {
+      const text = String(value ?? '');
+      return /^'[\s\t\r\n]*[=+\-@]/.test(text) ? text.slice(1) : text;
+    }
+
+    function escapeCsvCell(value) {
+      const text = protectCsvText(value);
+      const escaped = text.replace(/"/g, '""');
+      return /[",\r\n]/.test(escaped) ? `"${escaped}"` : escaped;
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = '';
+      let inQuotes = false;
+      let quoteClosed = false;
+      const source = text.replace(/^\uFEFF/, '');
+
+      for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        const nextChar = source[index + 1];
+
+        if (char === '"' && inQuotes && nextChar === '"') {
+          cell += '"';
+          index += 1;
+          continue;
+        }
+
+        if (char === '"') {
+          if (inQuotes) {
+            inQuotes = false;
+            quoteClosed = true;
+            continue;
+          }
+
+          if (cell === '') {
+            inQuotes = true;
+            continue;
+          }
+
+          throw new Error('CSVの引用符の位置が正しくありません。');
+        }
+
+        if (quoteClosed && char !== ',' && char !== '\n' && char !== '\r') {
+          throw new Error('CSVの引用符の後に不要な文字があります。');
+        }
+
+        if (quoteClosed && char === ',') {
+          quoteClosed = false;
+          row.push(cell);
+          cell = '';
+          continue;
+        }
+
+        if (char === ',' && !inQuotes) {
+          quoteClosed = false;
+          row.push(cell);
+          cell = '';
+          continue;
+        }
+
+        if ((char === '\n' || char === '\r') && !inQuotes) {
+          if (char === '\r' && nextChar === '\n') {
+            index += 1;
+          }
+          row.push(cell);
+          if (row.some((value) => value.trim() !== '')) {
+            rows.push(row);
+          }
+          row = [];
+          cell = '';
+          quoteClosed = false;
+          continue;
+        }
+
+        cell += char;
+      }
+
+      row.push(cell);
+      if (row.some((value) => value.trim() !== '')) {
+        rows.push(row);
+      }
+
+      if (inQuotes) {
+        throw new Error('CSVの引用符が正しく閉じられていません。');
+      }
+
+      return rows;
+    }
+
+    function buildCsvBackup() {
+      const rows = [
+        ['type', 'id', 'amount', 'category', 'expenseDate', 'cycle', 'name', 'createdAt', 'budget'],
+        ['budget', '', '', '', '', '', '', '', monthlyBudget],
+        ['savingGoal', '', '', '', '', '', '', '', savingGoal]
+      ];
+
+      expenses.forEach((expense) => {
+        rows.push([
+          'expense',
+          expense.id,
+          expense.amount,
+          expense.category,
+          getExpenseDateValue(expense),
+          '',
+          '',
+          expense.createdAt,
+          ''
+        ]);
+      });
+
+      subscriptions.forEach((subscription) => {
+        rows.push([
+          'subscription',
+          subscription.id,
+          subscription.amount,
+          '',
+          '',
+          subscription.cycle,
+          subscription.name,
+          subscription.createdAt,
+          ''
+        ]);
+      });
+
+      return rows
+        .map((row) => row.map(escapeCsvCell).join(','))
+        .join('\r\n');
+    }
+
+    function exportCsvBackup() {
+      const csv = `\uFEFF${buildCsvBackup()}`;
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `kakeibo-backup-${toDateInputValue(new Date())}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function importCsvBackup(text) {
+      const rows = parseCsv(text);
+      if (rows.length < 2) {
+        throw new Error('読み込めるデータがありません。');
+      }
+
+      const headers = rows[0].map((header) => header.trim());
+      const typeIndex = headers.indexOf('type');
+      if (typeIndex === -1) {
+        throw new Error('このアプリ用のCSVではありません。');
+      }
+
+      const requiredHeaders = ['type', 'id', 'amount', 'category', 'expenseDate', 'cycle', 'name', 'createdAt', 'budget'];
+      const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
+      if (missingHeaders.length > 0) {
+        throw new Error(`CSVの項目が不足しています: ${missingHeaders.join(', ')}`);
+      }
+
+      let importedBudget = monthlyBudget;
+      let importedSavingGoal = DEFAULT_SAVING_GOAL;
+      const importedExpenses = [];
+      const importedSubscriptions = [];
+      const invalidRows = [];
+
+      rows.slice(1).forEach((row, rowIndex) => {
+        const record = {};
+        const rowNumber = rowIndex + 2;
+        headers.forEach((header, index) => {
+          record[header] = row[index] ?? '';
+        });
+
+        const type = record.type;
+
+        if (type === 'budget') {
+          const budget = Number(record.budget);
+          if (Number.isFinite(budget) && budget >= 0) {
+            importedBudget = Math.round(budget);
+          } else {
+            invalidRows.push(`${rowNumber}行目: 予算の金額が正しくありません`);
+          }
+          return;
+        }
+
+        if (type === 'savingGoal') {
+          const goal = Number(record.budget);
+          if (Number.isFinite(goal) && goal >= 0) {
+            importedSavingGoal = Math.round(goal);
+          } else {
+            invalidRows.push(`${rowNumber}行目: 節約目標の金額が正しくありません`);
+          }
+          return;
+        }
+
+        if (type === 'expense') {
+          const normalizedExpense = normalizeExpense({
+            id: restoreCsvText(record.id),
+            amount: record.amount,
+            category: restoreCsvText(record.category),
+            expenseDate: restoreCsvText(record.expenseDate),
+            createdAt: restoreCsvText(record.createdAt)
+          });
+
+          if (normalizedExpense) {
+            importedExpenses.push(normalizedExpense);
+          } else {
+            invalidRows.push(`${rowNumber}行目: 支出データが正しくありません`);
+          }
+          return;
+        }
+
+        if (type === 'subscription') {
+          const normalizedSubscription = normalizeSubscription({
+            id: restoreCsvText(record.id),
+            name: restoreCsvText(record.name),
+            amount: record.amount,
+            cycle: restoreCsvText(record.cycle),
+            createdAt: restoreCsvText(record.createdAt)
+          });
+
+          if (normalizedSubscription) {
+            importedSubscriptions.push(normalizedSubscription);
+          } else {
+            invalidRows.push(`${rowNumber}行目: 固定費データが正しくありません`);
+          }
+          return;
+        }
+
+        invalidRows.push(`${rowNumber}行目: データ種別が正しくありません`);
+      });
+
+      if (invalidRows.length > 0) {
+        const preview = invalidRows.slice(0, 5).join('\n');
+        const suffix = invalidRows.length > 5 ? `\nほか ${invalidRows.length - 5}件` : '';
+        throw new Error(`CSVに読み込めない行があります。\n${preview}${suffix}`);
+      }
+
+      const shouldImport = window.confirm(
+        `CSVを読み込みますか？\n支出 ${importedExpenses.length}件、固定費 ${importedSubscriptions.length}件を現在のデータに上書きします。`
+      );
+      if (!shouldImport) return;
+
+      const saved = saveToStorage(STORAGE_KEY, JSON.stringify(importedExpenses))
+        && saveToStorage(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(importedSubscriptions))
+        && saveToStorage(BUDGET_STORAGE_KEY, String(importedBudget))
+        && saveToStorage(SAVING_GOAL_STORAGE_KEY, String(importedSavingGoal));
+      if (!saved) return;
+
+      expenses = importedExpenses;
+      subscriptions = importedSubscriptions;
+      monthlyBudget = importedBudget;
+      savingGoal = importedSavingGoal;
+      render();
+      window.alert('CSVの読み込みが完了しました。');
+    }
+
+    function formatToday(date) {
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+      return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日（${weekdays[date.getDay()]}）`;
+    }
+
+    function formatExpenseDate(dateValue) {
+      const date = parseLocalDate(dateValue);
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+      return `${date.getMonth() + 1}月${date.getDate()}日（${weekdays[date.getDay()]}）`;
+    }
+
+    function updateTodayLabel() {
+      todayLabel.textContent = formatToday(new Date());
+    }
+
+    function getCurrentMonthKey() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function getSavingGoalMessage(percent, remaining, amountLeft) {
+      if (savingGoal <= 0) {
+        return {
+          short: '目標を決めましょう',
+          detail: 'まずは小さな金額で大丈夫です。今月キープしたい金額を設定してみましょう。'
+        };
+      }
+
+      if (remaining < 0) {
+        return {
+          short: '立て直しモード',
+          detail: '今月は少しオーバーしています。責めずに、次の支出を小さく整えるところから始めましょう。'
+        };
+      }
+
+      if (amountLeft === 0) {
+        return {
+          short: '達成中です',
+          detail: 'すばらしいです。今月は目標額をしっかりキープできています。'
+        };
+      }
+
+      if (percent >= 80) {
+        return {
+          short: 'あと少し',
+          detail: `あと${formatYen(amountLeft)}で達成です。ここまでかなり良いペースです。`
+        };
+      }
+
+      if (percent >= 40) {
+        return {
+          short: 'いいペース',
+          detail: 'まだ十分に間に合います。今日使えるお金を意識しながら、無理なく続けましょう。'
+        };
+      }
+
+      return {
+        short: 'ここからで大丈夫',
+        detail: '小さな見直しで流れは変えられます。固定費やついで買いを一つだけ見直してみましょう。'
+      };
+    }
+
+    function showGoalCelebration(remaining) {
+      const monthKey = getCurrentMonthKey();
+      if (localStorage.getItem(SAVING_GOAL_ACHIEVED_MONTH_KEY) === monthKey) return;
+
+      saveToStorage(SAVING_GOAL_ACHIEVED_MONTH_KEY, monthKey);
+      goalCelebrationMessage.textContent = `今月は${formatYen(remaining)}をキープできています。この調子です。`;
+      goalCelebration.classList.remove('hidden');
+      goalCelebration.classList.add('flex');
+    }
+
+    function updateSavingGoalSummary(remaining) {
+      const safeRemaining = Math.max(remaining, 0);
+      const percent = savingGoal > 0
+        ? Math.min(Math.floor((safeRemaining / savingGoal) * 100), 100)
+        : 0;
+      const amountLeft = savingGoal > 0
+        ? Math.max(savingGoal - safeRemaining, 0)
+        : 0;
+      const message = getSavingGoalMessage(percent, remaining, amountLeft);
+
+      savingGoalAmount.textContent = formatYen(savingGoal);
+      savingGoalProgress.textContent = `${percent}%`;
+      savingGoalProgressBar.style.width = `${percent}%`;
+      savingGoalRemaining.textContent = formatYen(amountLeft);
+      savingGoalShortMessage.textContent = message.short;
+      savingGoalMessage.textContent = message.detail;
+      savingGoalInput.value = savingGoal;
+
+      if (savingGoal > 0 && remaining >= savingGoal) {
+        showGoalCelebration(remaining);
+      }
+    }
+
+    function showPanel(panelName) {
+      activePanel = panelName;
+
+      overviewPanel.classList.toggle('hidden', panelName !== 'overview');
+      inputPanel.classList.toggle('hidden', panelName !== 'input');
+      fixedCostPanel.classList.toggle('hidden', panelName !== 'fixedCost');
+
+      tabButtons.forEach((button) => {
+        const isActive = button.dataset.panel === panelName;
+        button.className = isActive
+          ? 'flex flex-col items-center gap-1 rounded-xl bg-emerald-600 px-2 py-2 text-xs font-semibold text-white transition'
+          : 'flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold text-slate-500 transition';
+      });
+
+      if (panelName === 'overview' && categoryChart) {
+        window.requestAnimationFrame(() => {
+          categoryChart.resize();
+        });
+      }
+    }
+
+    function isCurrentMonth(expense) {
+      const date = parseLocalDate(getExpenseDateValue(expense));
+      const now = new Date();
+      return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+    }
+
+    function getRemainingDaysInMonth() {
+      const now = new Date();
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      return lastDay - now.getDate() + 1;
+    }
+
+    function getCurrentMonthExpenses() {
+      return expenses.filter((expense) => isCurrentMonth(expense));
+    }
+
+    function getCategoryTotals(currentMonthExpenses) {
+      return categories.map((category) => {
+        return currentMonthExpenses
+          .filter((expense) => expense.category === category)
+          .reduce((sum, expense) => sum + expense.amount, 0);
+      });
+    }
+
+    function updateCategoryChart(categoryTotals, total) {
+      if (!window.Chart) return;
+
+      const chartData = total > 0 ? categoryTotals : [1, 0, 0, 0];
+      const colors = total > 0 ? chartColors : emptyChartColors;
+
+      if (!categoryChart) {
+        categoryChart = new Chart(categoryChartCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: categories,
+            datasets: [{
+              data: chartData,
+              backgroundColor: colors,
+              borderColor: '#ffffff',
+              borderWidth: 4,
+              hoverOffset: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                enabled: total > 0,
+                callbacks: {
+                  label: (context) => `${context.label}: ${formatYen(context.raw)}`
+                }
+              }
+            }
+          }
+        });
+        return;
+      }
+
+      categoryChart.data.datasets[0].data = chartData;
+      categoryChart.data.datasets[0].backgroundColor = colors;
+      categoryChart.options.plugins.tooltip.enabled = total > 0;
+      categoryChart.update();
+    }
+
+    function updateCategoryLegend(categoryTotals, total) {
+      categoryLegend.innerHTML = '';
+
+      categories.forEach((category, index) => {
+        const amount = categoryTotals[index];
+        const percent = total > 0 ? Math.round((amount / total) * 100) : 0;
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2';
+
+        const label = document.createElement('span');
+        label.className = 'flex min-w-0 items-center gap-2 text-slate-600';
+
+        const swatch = document.createElement('span');
+        swatch.className = 'h-2.5 w-2.5 shrink-0 rounded-full';
+        swatch.style.backgroundColor = chartColors[index];
+
+        const categoryName = document.createElement('span');
+        categoryName.className = 'truncate';
+        categoryName.textContent = category;
+
+        const percentage = document.createElement('span');
+        percentage.className = 'shrink-0 font-semibold text-slate-800';
+        percentage.textContent = `${percent}%`;
+
+        label.append(swatch, categoryName);
+        item.append(label, percentage);
+        categoryLegend.appendChild(item);
+      });
+    }
+
+    function createHistoryItem(expense) {
+      const item = document.createElement('li');
+      item.className = 'flex items-center justify-between gap-3 rounded-lg bg-white p-4 shadow-sm';
+
+      const detail = document.createElement('div');
+      detail.className = 'min-w-0';
+
+      const meta = document.createElement('div');
+      meta.className = 'flex items-center gap-2';
+
+      const category = document.createElement('span');
+      category.className = 'rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700';
+      category.textContent = expense.category;
+
+      const date = document.createElement('span');
+      date.className = 'text-xs text-slate-400';
+      date.textContent = formatExpenseDate(getExpenseDateValue(expense));
+
+      const amount = document.createElement('p');
+      amount.className = 'mt-2 text-xl font-bold text-slate-900';
+      amount.textContent = formatYen(expense.amount);
+
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-600';
+      deleteButton.dataset.id = expense.id;
+      deleteButton.textContent = '削除';
+
+      meta.append(category, date);
+      detail.append(meta, amount);
+      item.append(detail, deleteButton);
+
+      return item;
+    }
+
+    function getSubscriptionTotals() {
+      const monthlyBaseTotal = subscriptions
+        .filter((subscription) => subscription.cycle === 'monthly')
+        .reduce((sum, subscription) => sum + subscription.amount, 0);
+      const yearlyBaseTotal = subscriptions
+        .filter((subscription) => subscription.cycle === 'yearly')
+        .reduce((sum, subscription) => sum + subscription.amount, 0);
+
+      // 年額は月あたりに割り、画面表示は1円単位に丸めます。
+      return {
+        monthly: Math.round(monthlyBaseTotal + yearlyBaseTotal / 12),
+        yearly: Math.round(monthlyBaseTotal * 12 + yearlyBaseTotal)
+      };
+    }
+
+    function getSubscriptionYearlyCost(subscription) {
+      return subscription.cycle === 'monthly'
+        ? subscription.amount * 12
+        : subscription.amount;
+    }
+
+    function createSubscriptionItem(subscription) {
+      const item = document.createElement('li');
+      item.className = 'flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-4';
+
+      const detail = document.createElement('div');
+      detail.className = 'min-w-0';
+
+      const name = document.createElement('p');
+      name.className = 'truncate text-base font-bold text-slate-900';
+      name.textContent = subscription.name;
+
+      const meta = document.createElement('div');
+      meta.className = 'mt-2 flex flex-wrap items-center gap-2';
+
+      const cycle = document.createElement('span');
+      cycle.className = 'rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700';
+      cycle.textContent = getCycleLabel(subscription.cycle);
+
+      const amount = document.createElement('span');
+      amount.className = 'text-sm font-semibold text-slate-600';
+      amount.textContent = formatYen(subscription.amount);
+
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'shrink-0 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-rose-50 hover:text-rose-600';
+      deleteButton.dataset.subscriptionId = subscription.id;
+      deleteButton.textContent = '削除';
+
+      meta.append(cycle, amount);
+      detail.append(name, meta);
+      item.append(detail, deleteButton);
+
+      return item;
+    }
+
+    function renderSubscriptions() {
+      const totals = getSubscriptionTotals();
+
+      subscriptionMonthlyTotal.textContent = formatYen(totals.monthly);
+      subscriptionYearlyTotal.textContent = formatYen(totals.yearly);
+      subscriptionCount.textContent = `${subscriptions.length}件`;
+      subscriptionEmptyState.classList.toggle('hidden', subscriptions.length > 0);
+      subscriptionList.innerHTML = '';
+
+      subscriptions
+        .slice()
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .forEach((subscription) => {
+          subscriptionList.appendChild(createSubscriptionItem(subscription));
+        });
+    }
+
+    function render() {
+      const currentMonthExpenses = getCurrentMonthExpenses();
+      const total = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+      const categoryTotals = getCategoryTotals(currentMonthExpenses);
+      const remaining = monthlyBudget - total;
+      const dailyAmount = Math.floor(remaining / getRemainingDaysInMonth());
+
+      monthlyTotal.textContent = formatYen(total);
+      chartCenterTotal.textContent = formatYen(total);
+      remainingBudget.textContent = formatYen(remaining);
+      dailyAvailable.textContent = remaining < 0 ? '予算オーバー' : formatYen(dailyAmount);
+      remainingBudget.classList.toggle('text-rose-600', remaining < 0);
+      remainingBudget.classList.toggle('text-emerald-900', remaining >= 0);
+      updateSavingGoalSummary(remaining);
+      updateCategoryChart(categoryTotals, total);
+      updateCategoryLegend(categoryTotals, total);
+      budgetInput.value = monthlyBudget;
+      const sortedExpenses = expenses
+        .slice()
+        .sort((a, b) => {
+          const dateDiff = getExpenseTimestamp(b) - getExpenseTimestamp(a);
+          if (dateDiff !== 0) return dateDiff;
+
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+      const visibleExpenses = isHistoryExpanded
+        ? sortedExpenses
+        : sortedExpenses.slice(0, HISTORY_PREVIEW_LIMIT);
+
+      itemCount.textContent = isHistoryExpanded || expenses.length <= HISTORY_PREVIEW_LIMIT
+        ? `${expenses.length}件`
+        : `最新${visibleExpenses.length}件 / 全${expenses.length}件`;
+      emptyState.classList.toggle('hidden', expenses.length > 0);
+      historyList.innerHTML = '';
+      historyList.className = isHistoryExpanded
+        ? 'max-h-72 space-y-3 overflow-y-auto pr-1'
+        : 'space-y-3';
+      historyToggleButton.classList.toggle('hidden', expenses.length <= HISTORY_PREVIEW_LIMIT);
+      historyToggleButton.textContent = isHistoryExpanded ? '最新3件だけ表示' : 'すべて表示';
+
+      visibleExpenses
+        .forEach((expense) => {
+          historyList.appendChild(createHistoryItem(expense));
+        });
+
+      renderSubscriptions();
+    }
+
+    budgetForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const budget = Number(budgetInput.value);
+      if (!Number.isFinite(budget) || budget < 0) {
+        budgetInput.focus();
+        return;
+      }
+
+      const previousBudget = monthlyBudget;
+      monthlyBudget = Math.round(budget);
+      if (!saveBudget()) {
+        monthlyBudget = previousBudget;
+        render();
+        return;
+      }
+      render();
+    });
+
+    savingGoalForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const goal = Number(savingGoalInput.value);
+      if (!Number.isFinite(goal) || goal < 0) {
+        savingGoalInput.focus();
+        return;
+      }
+
+      const previousSavingGoal = savingGoal;
+      savingGoal = Math.round(goal);
+      if (!saveSavingGoal()) {
+        savingGoal = previousSavingGoal;
+        render();
+        return;
+      }
+      render();
+    });
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const amount = Number(amountInput.value);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        amountInput.focus();
+        return;
+      }
+
+      if (!isValidDateInput(expenseDateInput.value)) {
+        expenseDateInput.focus();
+        return;
+      }
+
+      const category = categories.includes(categoryInput.value) ? categoryInput.value : 'その他';
+
+      const expense = {
+        id: createId(),
+        amount: Math.round(amount),
+        category,
+        expenseDate: expenseDateInput.value,
+        createdAt: new Date().toISOString()
+      };
+
+      expenses.push(expense);
+      if (!saveExpenses()) {
+        expenses = expenses.filter((savedExpense) => savedExpense.id !== expense.id);
+        render();
+        return;
+      }
+      render();
+      form.reset();
+      categoryInput.value = '食費';
+      expenseDateInput.value = toDateInputValue(new Date());
+      amountInput.focus();
+    });
+
+    subscriptionForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const name = subscriptionNameInput.value.trim();
+      const amount = Number(subscriptionAmountInput.value);
+      const cycle = subscriptionCycles.includes(subscriptionCycleInput.value)
+        ? subscriptionCycleInput.value
+        : 'monthly';
+
+      if (!name) {
+        subscriptionNameInput.focus();
+        return;
+      }
+
+      if (!Number.isFinite(amount) || amount <= 0) {
+        subscriptionAmountInput.focus();
+        return;
+      }
+
+      const subscription = {
+        id: createId(),
+        name: name.slice(0, 40),
+        amount: Math.round(amount),
+        cycle,
+        createdAt: new Date().toISOString()
+      };
+
+      subscriptions.push(subscription);
+      if (!saveSubscriptions()) {
+        subscriptions = subscriptions.filter((savedSubscription) => savedSubscription.id !== subscription.id);
+        render();
+        return;
+      }
+      render();
+      subscriptionForm.reset();
+      subscriptionCycleInput.value = 'monthly';
+      subscriptionNameInput.focus();
+    });
+
+    historyList.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
+
+      const deleteButton = event.target.closest('button[data-id]');
+      if (!deleteButton) return;
+
+      const shouldDelete = window.confirm('この支出を削除しますか？');
+      if (!shouldDelete) return;
+
+      const previousExpenses = expenses;
+      expenses = expenses.filter((expense) => expense.id !== deleteButton.dataset.id);
+      if (!saveExpenses()) {
+        expenses = previousExpenses;
+        render();
+        return;
+      }
+      render();
+    });
+
+    subscriptionList.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
+
+      const deleteButton = event.target.closest('button[data-subscription-id]');
+      if (!deleteButton) return;
+
+      const shouldDelete = window.confirm('この固定費を削除しますか？');
+      if (!shouldDelete) return;
+
+      const previousSubscriptions = subscriptions;
+      const deletedSubscription = subscriptions.find((subscription) => {
+        return subscription.id === deleteButton.dataset.subscriptionId;
+      });
+      subscriptions = subscriptions.filter((subscription) => {
+        return subscription.id !== deleteButton.dataset.subscriptionId;
+      });
+      if (!saveSubscriptions()) {
+        subscriptions = previousSubscriptions;
+        render();
+        return;
+      }
+      render();
+      if (deletedSubscription) {
+        window.alert(`年間で${formatYen(getSubscriptionYearlyCost(deletedSubscription))}削減できます。`);
+      }
+    });
+
+    tabButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        showPanel(button.dataset.panel);
+      });
+    });
+
+    historyToggleButton.addEventListener('click', () => {
+      isHistoryExpanded = !isHistoryExpanded;
+      render();
+    });
+
+    goalCelebrationClose.addEventListener('click', () => {
+      goalCelebration.classList.add('hidden');
+      goalCelebration.classList.remove('flex');
+    });
+
+    exportCsvButton.addEventListener('click', () => {
+      exportCsvBackup();
+    });
+
+    importCsvButton.addEventListener('click', () => {
+      importCsvInput.click();
+    });
+
+    importCsvInput.addEventListener('change', () => {
+      const file = importCsvInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        try {
+          importCsvBackup(String(reader.result || ''));
+        } catch (error) {
+          window.alert(error.message || 'CSVの読み込みに失敗しました。');
+        } finally {
+          importCsvInput.value = '';
+        }
+      });
+      reader.addEventListener('error', () => {
+        window.alert('CSVファイルを読み込めませんでした。');
+        importCsvInput.value = '';
+      });
+      reader.readAsText(file, 'utf-8');
+    });
+
+    window.addEventListener('load', () => {
+      updateTodayLabel();
+      expenseDateInput.value = toDateInputValue(new Date());
+      render();
+      showPanel(activePanel);
+      window.setInterval(updateTodayLabel, 60000);
+
+      window.setTimeout(() => {
+        splashScreen.classList.add('splash-hidden');
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
