@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="app-version" content="2026.07.09-settings">
+  <meta name="app-version" content="2026.07.09-income-budget">
   <title>シンプル家計簿</title>
   <link rel="apple-touch-icon" href="icon.png">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -149,6 +149,24 @@
           </div>
         </div>
 
+        <div class="mt-4 rounded-lg bg-cyan-50 p-4">
+          <p class="text-xs font-semibold text-cyan-700">給料から見た予算候補</p>
+          <p id="overviewSuggestedBudget" class="mt-2 text-2xl font-bold text-cyan-950">¥0</p>
+          <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
+            <div class="rounded-lg bg-white/75 p-3">
+              <p class="font-semibold text-slate-500">給料</p>
+              <p id="overviewIncome" class="mt-1 font-bold text-slate-900">¥0</p>
+            </div>
+            <div class="rounded-lg bg-white/75 p-3">
+              <p class="font-semibold text-slate-500">固定費</p>
+              <p id="overviewFixedCost" class="mt-1 font-bold text-slate-900">¥0</p>
+            </div>
+          </div>
+          <p id="overviewIncomeMessage" class="mt-3 text-xs leading-relaxed text-slate-500">
+            給料を入力すると、固定費を引いた予算候補が見られます。
+          </p>
+        </div>
+
         <div class="mt-4 rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 p-5">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -224,6 +242,10 @@
               <p class="mt-3 text-xs leading-relaxed text-slate-500">
                 CSVは端末内だけで処理されます。読み込み時は現在のデータに上書きされます。
               </p>
+              <div id="backupReminder" class="mt-3 rounded-lg bg-amber-50 px-3 py-3 text-xs leading-relaxed text-amber-800">
+                <p id="backupReminderText">まだCSVバックアップがありません。</p>
+              </div>
+              <p id="lastCsvExportLabel" class="mt-2 text-xs text-slate-500">前回バックアップ: なし</p>
 
               <div class="mt-4 border-t border-slate-100 pt-4">
                 <label for="monthStartDay" class="block text-sm font-bold text-slate-800">月の開始日</label>
@@ -261,7 +283,7 @@
                 <ul id="categorySettingsList" class="mt-3 space-y-2"></ul>
               </div>
               <p class="mt-3 border-t border-slate-100 pt-3 text-[11px] font-medium text-slate-400">
-                version 2026.07.09-settings
+                version 2026.07.09-income-budget
               </p>
             </div>
           </details>
@@ -311,6 +333,55 @@
           >
             追加
           </button>
+        </form>
+
+        <form id="incomeBudgetForm" class="mt-5 rounded-lg bg-cyan-50 p-4">
+          <div>
+            <p class="text-sm font-bold text-cyan-900">給料から予算を計算</p>
+            <p class="mt-1 text-xs leading-relaxed text-slate-500">給料から固定費を引いて、今月の予算候補を出します。</p>
+          </div>
+
+          <label for="monthlyIncome" class="mt-4 block text-sm font-semibold text-slate-700">月の給料（手取り）</label>
+          <input
+            id="monthlyIncome"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            step="1000"
+            placeholder="例: 250000"
+            class="mt-2 w-full rounded-lg border border-cyan-100 bg-white px-4 py-3 text-base outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100"
+          >
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div class="rounded-lg bg-white/80 p-3">
+              <p class="text-xs font-semibold text-slate-500">月額固定費</p>
+              <p id="incomeFixedCost" class="mt-1 text-lg font-bold text-slate-900">¥0</p>
+            </div>
+            <div class="rounded-lg bg-white/80 p-3">
+              <p class="text-xs font-semibold text-slate-500">予算候補</p>
+              <p id="suggestedBudget" class="mt-1 text-lg font-bold text-cyan-950">¥0</p>
+            </div>
+          </div>
+
+          <p id="incomeBudgetMessage" class="mt-3 text-xs leading-relaxed text-slate-600">
+            給料を保存すると、固定費を引いた金額が表示されます。
+          </p>
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <button
+              type="submit"
+              class="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700 active:scale-[0.99]"
+            >
+              給料を保存
+            </button>
+            <button
+              id="applySuggestedBudgetButton"
+              type="button"
+              class="rounded-lg bg-white px-4 py-3 text-sm font-semibold text-cyan-800 shadow-sm ring-1 ring-cyan-100 transition hover:bg-cyan-100 active:scale-[0.99]"
+            >
+              今月の予算に反映
+            </button>
+          </div>
         </form>
 
         <form id="budgetForm" class="mt-5 border-b border-slate-100 pb-5">
@@ -488,10 +559,14 @@
     const SAVING_GOAL_ACHIEVED_MONTH_KEY = 'simple-budget-saving-goal-achieved-month';
     const MONTH_START_DAY_STORAGE_KEY = 'simple-budget-month-start-day';
     const CATEGORIES_STORAGE_KEY = 'simple-budget-categories';
+    const INCOME_STORAGE_KEY = 'simple-budget-monthly-income';
+    const CSV_EXPORT_DATE_STORAGE_KEY = 'simple-budget-last-csv-export-at';
+    const DATA_CHANGED_AT_STORAGE_KEY = 'simple-budget-data-changed-at';
     const DEFAULT_BUDGET = 50000;
     const DEFAULT_SAVING_GOAL = 10000;
     const DEFAULT_CATEGORIES = ['食費', '日用品', '趣味', 'その他'];
     const form = document.getElementById('expenseForm');
+    const incomeBudgetForm = document.getElementById('incomeBudgetForm');
     const budgetForm = document.getElementById('budgetForm');
     const savingGoalForm = document.getElementById('savingGoalForm');
     const subscriptionForm = document.getElementById('subscriptionForm');
@@ -499,6 +574,7 @@
     const expenseDateInput = document.getElementById('expenseDate');
     const amountInput = document.getElementById('amount');
     const categoryInput = document.getElementById('category');
+    const monthlyIncomeInput = document.getElementById('monthlyIncome');
     const budgetInput = document.getElementById('budget');
     const savingGoalInput = document.getElementById('savingGoalInput');
     const subscriptionNameInput = document.getElementById('subscriptionName');
@@ -510,6 +586,14 @@
     const categoryLegend = document.getElementById('categoryLegend');
     const remainingBudget = document.getElementById('remainingBudget');
     const dailyAvailable = document.getElementById('dailyAvailable');
+    const overviewSuggestedBudget = document.getElementById('overviewSuggestedBudget');
+    const overviewIncome = document.getElementById('overviewIncome');
+    const overviewFixedCost = document.getElementById('overviewFixedCost');
+    const overviewIncomeMessage = document.getElementById('overviewIncomeMessage');
+    const incomeFixedCost = document.getElementById('incomeFixedCost');
+    const suggestedBudget = document.getElementById('suggestedBudget');
+    const incomeBudgetMessage = document.getElementById('incomeBudgetMessage');
+    const applySuggestedBudgetButton = document.getElementById('applySuggestedBudgetButton');
     const savingGoalAmount = document.getElementById('savingGoalAmount');
     const savingGoalProgress = document.getElementById('savingGoalProgress');
     const savingGoalProgressBar = document.getElementById('savingGoalProgressBar');
@@ -529,6 +613,9 @@
     const exportCsvButton = document.getElementById('exportCsvButton');
     const importCsvButton = document.getElementById('importCsvButton');
     const importCsvInput = document.getElementById('importCsvInput');
+    const backupReminder = document.getElementById('backupReminder');
+    const backupReminderText = document.getElementById('backupReminderText');
+    const lastCsvExportLabel = document.getElementById('lastCsvExportLabel');
     const monthStartDayInput = document.getElementById('monthStartDay');
     const categoryAddForm = document.getElementById('categoryAddForm');
     const categoryAddInput = document.getElementById('categoryAddInput');
@@ -552,6 +639,7 @@
     let expenses = loadExpenses();
     let subscriptions = loadSubscriptions();
     let monthlyBudget = loadBudget();
+    let monthlyIncome = loadIncome();
     let savingGoal = loadSavingGoal();
     let monthStartDay = loadMonthStartDay();
     let activePanel = 'overview';
@@ -643,6 +731,33 @@
 
     function saveMonthStartDay() {
       return saveToStorage(MONTH_START_DAY_STORAGE_KEY, String(monthStartDay));
+    }
+
+    function loadIncome() {
+      const savedIncomeValue = localStorage.getItem(INCOME_STORAGE_KEY);
+      if (savedIncomeValue === null) return 0;
+
+      const savedIncome = Number(savedIncomeValue);
+      return Number.isFinite(savedIncome) && savedIncome >= 0 ? Math.round(savedIncome) : 0;
+    }
+
+    function saveIncome() {
+      return saveToStorage(INCOME_STORAGE_KEY, String(monthlyIncome));
+    }
+
+    function getLastCsvExportDate() {
+      const savedDate = localStorage.getItem(CSV_EXPORT_DATE_STORAGE_KEY);
+      const timestamp = savedDate ? new Date(savedDate).getTime() : NaN;
+      return Number.isNaN(timestamp) ? null : new Date(savedDate);
+    }
+
+    function markDataChanged() {
+      saveToStorage(DATA_CHANGED_AT_STORAGE_KEY, new Date().toISOString());
+    }
+
+    function markCsvExported() {
+      saveToStorage(CSV_EXPORT_DATE_STORAGE_KEY, new Date().toISOString());
+      localStorage.removeItem(DATA_CHANGED_AT_STORAGE_KEY);
     }
 
     function saveExpenses() {
@@ -867,6 +982,7 @@
       const rows = [
         ['type', 'id', 'amount', 'category', 'expenseDate', 'cycle', 'name', 'createdAt', 'budget'],
         ['budget', '', '', '', '', '', '', '', monthlyBudget],
+        ['income', '', '', '', '', '', '', '', monthlyIncome],
         ['savingGoal', '', '', '', '', '', '', '', savingGoal],
         ['monthStartDay', '', '', '', '', '', '', '', monthStartDay]
       ];
@@ -919,6 +1035,8 @@
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
+      markCsvExported();
+      renderBackupReminder();
     }
 
     function importCsvBackup(text) {
@@ -940,6 +1058,7 @@
       }
 
       let importedBudget = monthlyBudget;
+      let importedIncome = 0;
       let importedSavingGoal = DEFAULT_SAVING_GOAL;
       let importedMonthStartDay = 1;
       let importedCategories = [];
@@ -972,6 +1091,16 @@
             importedBudget = Math.round(budget);
           } else {
             invalidRows.push(`${rowNumber}行目: 予算の金額が正しくありません`);
+          }
+          return;
+        }
+
+        if (type === 'income') {
+          const income = Number(record.budget);
+          if (Number.isFinite(income) && income >= 0) {
+            importedIncome = Math.round(income);
+          } else {
+            invalidRows.push(`${rowNumber}行目: 給料の金額が正しくありません`);
           }
           return;
         }
@@ -1044,13 +1173,14 @@
       }
 
       const shouldImport = window.confirm(
-        `CSVを読み込みますか？\n支出 ${importedExpenses.length}件、固定費 ${importedSubscriptions.length}件を現在のデータに上書きします。`
+        `CSVを読み込みますか？\n支出 ${importedExpenses.length}件、固定費 ${importedSubscriptions.length}件を現在のデータに上書きします。\n必要なら先にCSVを書き出してください。`
       );
       if (!shouldImport) return;
 
       const saved = saveToStorage(STORAGE_KEY, JSON.stringify(importedExpenses))
         && saveToStorage(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(importedSubscriptions))
         && saveToStorage(BUDGET_STORAGE_KEY, String(importedBudget))
+        && saveToStorage(INCOME_STORAGE_KEY, String(importedIncome))
         && saveToStorage(SAVING_GOAL_STORAGE_KEY, String(importedSavingGoal))
         && saveToStorage(MONTH_START_DAY_STORAGE_KEY, String(importedMonthStartDay))
         && saveToStorage(CATEGORIES_STORAGE_KEY, JSON.stringify(importedCategories));
@@ -1059,6 +1189,7 @@
       expenses = importedExpenses;
       subscriptions = importedSubscriptions;
       monthlyBudget = importedBudget;
+      monthlyIncome = importedIncome;
       savingGoal = importedSavingGoal;
       monthStartDay = importedMonthStartDay;
       categories = importedCategories;
@@ -1414,6 +1545,23 @@
       };
     }
 
+    function getSuggestedBudget() {
+      const fixedCost = getSubscriptionTotals().monthly;
+      return Math.max(monthlyIncome - fixedCost, 0);
+    }
+
+    function getIncomeBudgetMessage(fixedCost, suggested) {
+      if (monthlyIncome <= 0) {
+        return '給料を入力すると、固定費を引いた予算候補が見られます。';
+      }
+
+      if (monthlyIncome < fixedCost) {
+        return '固定費が給料を上回っています。固定費の見直しが必要かもしれません。';
+      }
+
+      return `給料から固定費を引くと、今月の予算候補は${formatYen(suggested)}です。`;
+    }
+
     function getSubscriptionYearlyCost(subscription) {
       return subscription.cycle === 'monthly'
         ? subscription.amount * 12
@@ -1472,6 +1620,44 @@
         });
     }
 
+    function renderIncomeBudgetSummary() {
+      const totals = getSubscriptionTotals();
+      const suggested = getSuggestedBudget();
+      const message = getIncomeBudgetMessage(totals.monthly, suggested);
+
+      monthlyIncomeInput.value = monthlyIncome > 0 ? monthlyIncome : '';
+      incomeFixedCost.textContent = formatYen(totals.monthly);
+      suggestedBudget.textContent = formatYen(suggested);
+      incomeBudgetMessage.textContent = message;
+      overviewIncome.textContent = formatYen(monthlyIncome);
+      overviewFixedCost.textContent = formatYen(totals.monthly);
+      overviewSuggestedBudget.textContent = formatYen(suggested);
+      overviewIncomeMessage.textContent = message;
+      const isOverFixedCost = monthlyIncome > 0 && monthlyIncome < totals.monthly;
+      suggestedBudget.classList.toggle('text-rose-600', isOverFixedCost);
+      suggestedBudget.classList.toggle('text-cyan-950', !isOverFixedCost);
+      overviewSuggestedBudget.classList.toggle('text-rose-600', isOverFixedCost);
+      overviewSuggestedBudget.classList.toggle('text-cyan-950', !isOverFixedCost);
+    }
+
+    function renderBackupReminder() {
+      const lastExportDate = getLastCsvExportDate();
+      const dataChangedAt = localStorage.getItem(DATA_CHANGED_AT_STORAGE_KEY);
+      const hasData = expenses.length > 0 || subscriptions.length > 0 || monthlyIncome > 0;
+      const daysSinceExport = lastExportDate
+        ? Math.floor((Date.now() - lastExportDate.getTime()) / (24 * 60 * 60 * 1000))
+        : Infinity;
+      const shouldRemind = hasData && dataChangedAt && (!lastExportDate || daysSinceExport >= 7);
+
+      lastCsvExportLabel.textContent = lastExportDate
+        ? `前回バックアップ: ${formatExpenseDate(toDateInputValue(lastExportDate))}`
+        : '前回バックアップ: なし';
+      backupReminder.classList.toggle('hidden', !shouldRemind);
+      backupReminderText.textContent = lastExportDate
+        ? '前回のCSVバックアップから7日以上たっています。念のため書き出しをおすすめします。'
+        : 'まだCSVバックアップがありません。データ保護のため、書き出しをおすすめします。';
+    }
+
     function render() {
       renderSettings();
       const currentMonthExpenses = getCurrentMonthExpenses();
@@ -1519,6 +1705,8 @@
         });
 
       renderSubscriptions();
+      renderIncomeBudgetSummary();
+      renderBackupReminder();
     }
 
     budgetForm.addEventListener('submit', (event) => {
@@ -1537,6 +1725,45 @@
         render();
         return;
       }
+      markDataChanged();
+      render();
+    });
+
+    incomeBudgetForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const income = Number(monthlyIncomeInput.value);
+      if (!Number.isFinite(income) || income < 0) {
+        monthlyIncomeInput.focus();
+        return;
+      }
+
+      const previousIncome = monthlyIncome;
+      monthlyIncome = Math.round(income);
+      if (!saveIncome()) {
+        monthlyIncome = previousIncome;
+        render();
+        return;
+      }
+
+      markDataChanged();
+      render();
+    });
+
+    applySuggestedBudgetButton.addEventListener('click', () => {
+      const suggested = getSuggestedBudget();
+      const shouldApply = window.confirm(`${formatYen(suggested)}を今月の予算に反映しますか？`);
+      if (!shouldApply) return;
+
+      const previousBudget = monthlyBudget;
+      monthlyBudget = suggested;
+      if (!saveBudget()) {
+        monthlyBudget = previousBudget;
+        render();
+        return;
+      }
+
+      markDataChanged();
       render();
     });
 
@@ -1556,6 +1783,7 @@
         render();
         return;
       }
+      markDataChanged();
       render();
     });
 
@@ -1573,7 +1801,7 @@
         return;
       }
 
-      const category = categories.includes(categoryInput.value) ? categoryInput.value : 'その他';
+      const category = categories.includes(categoryInput.value) ? categoryInput.value : categories[0];
 
       const expense = {
         id: createId(),
@@ -1589,6 +1817,7 @@
         render();
         return;
       }
+      markDataChanged();
       render();
       form.reset();
       categoryInput.value = categories[0];
@@ -1629,6 +1858,7 @@
         render();
         return;
       }
+      markDataChanged();
       render();
       subscriptionForm.reset();
       subscriptionCycleInput.value = 'monthly';
@@ -1651,6 +1881,7 @@
         render();
         return;
       }
+      markDataChanged();
       render();
     });
 
@@ -1675,6 +1906,7 @@
         render();
         return;
       }
+      markDataChanged();
       render();
       if (deletedSubscription) {
         window.alert(`年間で${formatYen(getSubscriptionYearlyCost(deletedSubscription))}削減できます。`);
@@ -1692,6 +1924,8 @@
       monthStartDay = nextDay;
       if (!saveMonthStartDay()) {
         monthStartDay = previousMonthStartDay;
+      } else {
+        markDataChanged();
       }
       render();
     });
@@ -1719,6 +1953,7 @@
         return;
       }
 
+      markDataChanged();
       categoryAddForm.reset();
       render();
     });
@@ -1766,6 +2001,7 @@
         return;
       }
 
+      markDataChanged();
       render();
     });
 
@@ -1819,6 +2055,7 @@
         return;
       }
 
+      markDataChanged();
       render();
     });
 
