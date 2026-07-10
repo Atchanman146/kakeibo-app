@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="app-version" content="2026.07.09-income-budget">
+  <meta name="app-version" content="2026.07.10-expense-tools">
   <title>シンプル家計簿</title>
   <link rel="apple-touch-icon" href="icon.png">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -107,12 +107,19 @@
     <div id="appPanels" class="mt-4 min-h-0 flex-1 overflow-hidden">
       <section id="overviewPanel" class="h-full overflow-y-auto rounded-lg bg-white p-5 shadow-sm">
         <div class="mb-5">
-          <p class="text-sm font-medium text-slate-500">今月の家計簿概要</p>
-          <h1 class="mt-1 text-2xl font-bold text-slate-900">お金の見える化</h1>
+          <p class="text-sm font-medium text-slate-500">家計簿概要</p>
+          <div class="mt-2 flex items-center justify-between gap-3">
+            <button id="previousMonthButton" type="button" aria-label="前の月を見る" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg font-bold text-slate-600 transition hover:bg-slate-200 active:scale-95">‹</button>
+            <div class="min-w-0 text-center">
+              <h1 id="periodLabel" class="text-xl font-bold text-slate-900">今月</h1>
+              <p id="periodDateRange" class="mt-1 text-xs text-slate-500"></p>
+            </div>
+            <button id="nextMonthButton" type="button" aria-label="次の月を見る" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg font-bold text-slate-600 transition hover:bg-slate-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30">›</button>
+          </div>
         </div>
 
         <div class="rounded-lg bg-slate-50 p-5">
-          <p class="text-sm font-medium text-slate-500">今月の総支出</p>
+          <p class="text-sm font-medium text-slate-500">選択期間の総支出</p>
           <p id="monthlyTotal" class="mt-3 text-4xl font-bold tracking-normal text-slate-900">¥0</p>
 
           <div class="mt-5 flex justify-center">
@@ -129,11 +136,11 @@
 
         <div class="mt-4 grid grid-cols-2 gap-3">
           <div class="rounded-lg bg-emerald-50 p-4">
-            <p class="text-xs font-semibold text-emerald-700">今月の残り予算</p>
+            <p class="text-xs font-semibold text-emerald-700">残り予算</p>
             <p id="remainingBudget" class="mt-2 text-xl font-bold text-emerald-900">¥0</p>
           </div>
           <div class="rounded-lg bg-blue-50 p-4">
-            <p class="text-xs font-semibold text-blue-700">今日使えるお金</p>
+            <p id="dailyAvailableLabel" class="text-xs font-semibold text-blue-700">今日使えるお金</p>
             <p id="dailyAvailable" class="mt-2 text-xl font-bold text-blue-900">¥0</p>
           </div>
         </div>
@@ -283,13 +290,16 @@
                 <ul id="categorySettingsList" class="mt-3 space-y-2"></ul>
               </div>
               <p class="mt-3 border-t border-slate-100 pt-3 text-[11px] font-medium text-slate-400">
-                version 2026.07.09-income-budget
+                version 2026.07.10-expense-tools
               </p>
             </div>
           </details>
         </div>
 
         <form id="expenseForm" class="space-y-4 border-b border-slate-100 pb-5">
+          <div id="editExpenseNotice" class="hidden rounded-lg bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800">
+            支出を編集中です
+          </div>
           <div>
             <label for="expenseDate" class="block text-sm font-semibold text-slate-700">日付</label>
             <input
@@ -327,13 +337,47 @@
             </select>
           </div>
 
-          <button
-            type="submit"
-            class="w-full rounded-lg bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99]"
-          >
-            追加
-          </button>
+          <div>
+            <label for="expenseNote" class="block text-sm font-semibold text-slate-700">メモ <span class="font-normal text-slate-400">（任意）</span></label>
+            <input
+              id="expenseNote"
+              type="text"
+              maxlength="60"
+              placeholder="例: スーパー、ランチ"
+              class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+            >
+          </div>
+
+          <div>
+            <label for="paymentMethod" class="block text-sm font-semibold text-slate-700">支払い方法</label>
+            <select id="paymentMethod" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100">
+              <option value="unspecified">未設定</option>
+              <option value="cash">現金</option>
+              <option value="card">クレジットカード</option>
+              <option value="emoney">電子マネー</option>
+              <option value="bank">口座振替</option>
+              <option value="other">その他</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <button id="expenseSubmitButton" type="submit" class="rounded-lg bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99]">追加</button>
+            <button id="saveFavoriteButton" type="button" class="rounded-lg bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 transition hover:bg-amber-100 active:scale-[0.99]">★ よく使う支出</button>
+          </div>
+          <button id="cancelExpenseEditButton" type="button" class="hidden w-full rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-200">編集をやめる</button>
         </form>
+
+        <section class="mt-5 border-b border-slate-100 pb-5" aria-labelledby="favoriteExpensesHeading">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 id="favoriteExpensesHeading" class="text-base font-bold text-slate-800">よく使う支出</h2>
+              <p class="mt-1 text-xs text-slate-500">タップすると今日の支出として登録します</p>
+            </div>
+            <p id="favoriteCount" class="text-sm text-slate-500">0件</p>
+          </div>
+          <div id="favoriteEmptyState" class="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 p-4 text-center text-sm text-amber-800">入力内容を「★ よく使う支出」から登録できます</div>
+          <ul id="favoriteExpensesList" class="space-y-2"></ul>
+        </section>
 
         <form id="incomeBudgetForm" class="mt-5 rounded-lg bg-cyan-50 p-4">
           <div>
@@ -428,7 +472,10 @@
 
         <div class="mt-5">
           <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-base font-bold text-slate-800">履歴</h2>
+            <div>
+              <h2 class="text-base font-bold text-slate-800">履歴</h2>
+              <p id="historyPeriodLabel" class="mt-1 text-xs text-slate-500"></p>
+            </div>
             <p id="itemCount" class="text-sm text-slate-500">0件</p>
           </div>
 
@@ -549,6 +596,11 @@
     </div>
   </div>
 
+  <div id="undoToast" class="fixed inset-x-4 bottom-24 z-50 mx-auto hidden max-w-sm items-center gap-3 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-2xl" role="status" aria-live="polite">
+    <p id="undoToastMessage" class="min-w-0 flex-1"></p>
+    <button id="undoToastButton" type="button" class="shrink-0 rounded-lg bg-white/15 px-3 py-2 font-bold text-white transition hover:bg-white/25">元に戻す</button>
+  </div>
+
   <script>
     document.title = 'シンプル家計簿';
 
@@ -562,6 +614,7 @@
     const INCOME_STORAGE_KEY = 'simple-budget-monthly-income';
     const CSV_EXPORT_DATE_STORAGE_KEY = 'simple-budget-last-csv-export-at';
     const DATA_CHANGED_AT_STORAGE_KEY = 'simple-budget-data-changed-at';
+    const FAVORITE_EXPENSES_STORAGE_KEY = 'simple-budget-favorite-expenses';
     const DEFAULT_BUDGET = 50000;
     const DEFAULT_SAVING_GOAL = 10000;
     const DEFAULT_CATEGORIES = ['食費', '日用品', '趣味', 'その他'];
@@ -574,6 +627,15 @@
     const expenseDateInput = document.getElementById('expenseDate');
     const amountInput = document.getElementById('amount');
     const categoryInput = document.getElementById('category');
+    const expenseNoteInput = document.getElementById('expenseNote');
+    const paymentMethodInput = document.getElementById('paymentMethod');
+    const expenseSubmitButton = document.getElementById('expenseSubmitButton');
+    const saveFavoriteButton = document.getElementById('saveFavoriteButton');
+    const cancelExpenseEditButton = document.getElementById('cancelExpenseEditButton');
+    const editExpenseNotice = document.getElementById('editExpenseNotice');
+    const favoriteExpensesList = document.getElementById('favoriteExpensesList');
+    const favoriteEmptyState = document.getElementById('favoriteEmptyState');
+    const favoriteCount = document.getElementById('favoriteCount');
     const monthlyIncomeInput = document.getElementById('monthlyIncome');
     const budgetInput = document.getElementById('budget');
     const savingGoalInput = document.getElementById('savingGoalInput');
@@ -586,6 +648,11 @@
     const categoryLegend = document.getElementById('categoryLegend');
     const remainingBudget = document.getElementById('remainingBudget');
     const dailyAvailable = document.getElementById('dailyAvailable');
+    const dailyAvailableLabel = document.getElementById('dailyAvailableLabel');
+    const previousMonthButton = document.getElementById('previousMonthButton');
+    const nextMonthButton = document.getElementById('nextMonthButton');
+    const periodLabel = document.getElementById('periodLabel');
+    const periodDateRange = document.getElementById('periodDateRange');
     const overviewSuggestedBudget = document.getElementById('overviewSuggestedBudget');
     const overviewIncome = document.getElementById('overviewIncome');
     const overviewFixedCost = document.getElementById('overviewFixedCost');
@@ -609,6 +676,7 @@
     const emptyState = document.getElementById('emptyState');
     const itemCount = document.getElementById('itemCount');
     const historyToggleButton = document.getElementById('historyToggleButton');
+    const historyPeriodLabel = document.getElementById('historyPeriodLabel');
     const splashScreen = document.getElementById('splashScreen');
     const exportCsvButton = document.getElementById('exportCsvButton');
     const importCsvButton = document.getElementById('importCsvButton');
@@ -630,13 +698,26 @@
     const goalCelebration = document.getElementById('goalCelebration');
     const goalCelebrationMessage = document.getElementById('goalCelebrationMessage');
     const goalCelebrationClose = document.getElementById('goalCelebrationClose');
+    const undoToast = document.getElementById('undoToast');
+    const undoToastMessage = document.getElementById('undoToastMessage');
+    const undoToastButton = document.getElementById('undoToastButton');
     const subscriptionCycles = ['monthly', 'yearly'];
+    const paymentMethods = ['unspecified', 'cash', 'card', 'emoney', 'bank', 'other'];
+    const paymentMethodLabels = {
+      unspecified: '未設定',
+      cash: '現金',
+      card: 'クレジットカード',
+      emoney: '電子マネー',
+      bank: '口座振替',
+      other: 'その他'
+    };
     const HISTORY_PREVIEW_LIMIT = 3;
     const chartColors = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#fb7185', '#2dd4bf', '#f97316', '#818cf8'];
     const emptyChartColors = ['#e2e8f0', '#e2e8f0', '#e2e8f0', '#e2e8f0'];
 
     let categories = loadCategories();
     let expenses = loadExpenses();
+    let favoriteExpenses = loadFavoriteExpenses();
     let subscriptions = loadSubscriptions();
     let monthlyBudget = loadBudget();
     let monthlyIncome = loadIncome();
@@ -644,6 +725,10 @@
     let monthStartDay = loadMonthStartDay();
     let activePanel = 'overview';
     let isHistoryExpanded = false;
+    let selectedMonthOffset = 0;
+    let editingExpenseId = null;
+    let undoAction = null;
+    let undoTimer = null;
     let categoryChart;
 
     function loadExpenses() {
@@ -652,7 +737,7 @@
         if (!Array.isArray(savedExpenses)) return [];
 
         return savedExpenses
-          .map(normalizeExpense)
+          .map((expense) => normalizeExpense(expense))
           .filter(Boolean);
       } catch {
         return [];
@@ -671,6 +756,10 @@
       const expenseDate = isValidDateInput(expense.expenseDate)
         ? expense.expenseDate
         : toDateInputValue(new Date(createdAt));
+      const note = String(expense.note || '').trim().slice(0, 60);
+      const paymentMethod = paymentMethods.includes(expense.paymentMethod)
+        ? expense.paymentMethod
+        : 'unspecified';
 
       if (!Number.isFinite(amount) || amount <= 0) return null;
 
@@ -679,8 +768,42 @@
         amount: Math.round(amount),
         category,
         expenseDate,
+        note,
+        paymentMethod,
         createdAt
       };
+    }
+
+    function normalizeFavoriteExpense(favorite, allowedCategories = categories) {
+      if (!favorite || typeof favorite !== 'object') return null;
+
+      const amount = Number(favorite.amount);
+      const fallbackCategory = allowedCategories.includes('その他') ? 'その他' : allowedCategories[0];
+      const category = allowedCategories.includes(favorite.category) ? favorite.category : fallbackCategory;
+      if (!Number.isFinite(amount) || amount <= 0) return null;
+
+      return {
+        id: typeof favorite.id === 'string' && favorite.id ? favorite.id : createId(),
+        amount: Math.round(amount),
+        category,
+        note: String(favorite.note || '').trim().slice(0, 60),
+        paymentMethod: paymentMethods.includes(favorite.paymentMethod) ? favorite.paymentMethod : 'unspecified',
+        createdAt: Number.isNaN(new Date(favorite.createdAt).getTime()) ? new Date().toISOString() : favorite.createdAt
+      };
+    }
+
+    function loadFavoriteExpenses() {
+      try {
+        const savedFavorites = JSON.parse(localStorage.getItem(FAVORITE_EXPENSES_STORAGE_KEY)) || [];
+        if (!Array.isArray(savedFavorites)) return [];
+        return savedFavorites.map((favorite) => normalizeFavoriteExpense(favorite)).filter(Boolean);
+      } catch {
+        return [];
+      }
+    }
+
+    function saveFavoriteExpenses() {
+      return saveToStorage(FAVORITE_EXPENSES_STORAGE_KEY, JSON.stringify(favoriteExpenses));
     }
 
     function saveToStorage(key, value) {
@@ -980,15 +1103,15 @@
 
     function buildCsvBackup() {
       const rows = [
-        ['type', 'id', 'amount', 'category', 'expenseDate', 'cycle', 'name', 'createdAt', 'budget'],
-        ['budget', '', '', '', '', '', '', '', monthlyBudget],
-        ['income', '', '', '', '', '', '', '', monthlyIncome],
-        ['savingGoal', '', '', '', '', '', '', '', savingGoal],
-        ['monthStartDay', '', '', '', '', '', '', '', monthStartDay]
+        ['type', 'id', 'amount', 'category', 'expenseDate', 'cycle', 'name', 'createdAt', 'budget', 'note', 'paymentMethod'],
+        ['budget', '', '', '', '', '', '', '', monthlyBudget, '', ''],
+        ['income', '', '', '', '', '', '', '', monthlyIncome, '', ''],
+        ['savingGoal', '', '', '', '', '', '', '', savingGoal, '', ''],
+        ['monthStartDay', '', '', '', '', '', '', '', monthStartDay, '', '']
       ];
 
       categories.forEach((category) => {
-        rows.push(['category', '', '', category, '', '', '', '', '']);
+        rows.push(['category', '', '', category, '', '', '', '', '', '', '']);
       });
 
       expenses.forEach((expense) => {
@@ -1001,7 +1124,25 @@
           '',
           '',
           expense.createdAt,
-          ''
+          '',
+          expense.note,
+          expense.paymentMethod
+        ]);
+      });
+
+      favoriteExpenses.forEach((favorite) => {
+        rows.push([
+          'favoriteExpense',
+          favorite.id,
+          favorite.amount,
+          favorite.category,
+          '',
+          '',
+          '',
+          favorite.createdAt,
+          '',
+          favorite.note,
+          favorite.paymentMethod
         ]);
       });
 
@@ -1015,6 +1156,8 @@
           subscription.cycle,
           subscription.name,
           subscription.createdAt,
+          '',
+          '',
           ''
         ]);
       });
@@ -1063,6 +1206,7 @@
       let importedMonthStartDay = 1;
       let importedCategories = [];
       const importedExpenses = [];
+      const importedFavoriteExpenses = [];
       const importedSubscriptions = [];
       const invalidRows = [];
 
@@ -1135,6 +1279,8 @@
             amount: record.amount,
             category: restoreCsvText(record.category),
             expenseDate: restoreCsvText(record.expenseDate),
+            note: restoreCsvText(record.note),
+            paymentMethod: restoreCsvText(record.paymentMethod),
             createdAt: restoreCsvText(record.createdAt)
           }, importedCategories);
 
@@ -1142,6 +1288,24 @@
             importedExpenses.push(normalizedExpense);
           } else {
             invalidRows.push(`${rowNumber}行目: 支出データが正しくありません`);
+          }
+          return;
+        }
+
+        if (type === 'favoriteExpense') {
+          const normalizedFavorite = normalizeFavoriteExpense({
+            id: restoreCsvText(record.id),
+            amount: record.amount,
+            category: restoreCsvText(record.category),
+            note: restoreCsvText(record.note),
+            paymentMethod: restoreCsvText(record.paymentMethod),
+            createdAt: restoreCsvText(record.createdAt)
+          }, importedCategories);
+
+          if (normalizedFavorite) {
+            importedFavoriteExpenses.push(normalizedFavorite);
+          } else {
+            invalidRows.push(`${rowNumber}行目: よく使う支出データが正しくありません`);
           }
           return;
         }
@@ -1173,11 +1337,12 @@
       }
 
       const shouldImport = window.confirm(
-        `CSVを読み込みますか？\n支出 ${importedExpenses.length}件、固定費 ${importedSubscriptions.length}件を現在のデータに上書きします。\n必要なら先にCSVを書き出してください。`
+        `CSVを読み込みますか？\n支出 ${importedExpenses.length}件、よく使う支出 ${importedFavoriteExpenses.length}件、固定費 ${importedSubscriptions.length}件を現在のデータに上書きします。\n必要なら先にCSVを書き出してください。`
       );
       if (!shouldImport) return;
 
       const saved = saveToStorage(STORAGE_KEY, JSON.stringify(importedExpenses))
+        && saveToStorage(FAVORITE_EXPENSES_STORAGE_KEY, JSON.stringify(importedFavoriteExpenses))
         && saveToStorage(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(importedSubscriptions))
         && saveToStorage(BUDGET_STORAGE_KEY, String(importedBudget))
         && saveToStorage(INCOME_STORAGE_KEY, String(importedIncome))
@@ -1187,6 +1352,7 @@
       if (!saved) return;
 
       expenses = importedExpenses;
+      favoriteExpenses = importedFavoriteExpenses;
       subscriptions = importedSubscriptions;
       monthlyBudget = importedBudget;
       monthlyIncome = importedIncome;
@@ -1208,6 +1374,14 @@
       return `${date.getMonth() + 1}月${date.getDate()}日（${weekdays[date.getDay()]}）`;
     }
 
+    function formatShortDate(date) {
+      return `${date.getMonth() + 1}/${date.getDate()}`;
+    }
+
+    function getPaymentMethodLabel(paymentMethod) {
+      return paymentMethodLabels[paymentMethod] || paymentMethodLabels.unspecified;
+    }
+
     function updateTodayLabel() {
       todayLabel.textContent = formatToday(new Date());
     }
@@ -1220,6 +1394,28 @@
       const nextStart = new Date(start.getFullYear(), start.getMonth() + 1, monthStartDay);
 
       return { start, nextStart };
+    }
+
+    function getSelectedBudgetPeriod() {
+      const currentPeriod = getBudgetPeriod();
+      const start = new Date(
+        currentPeriod.start.getFullYear(),
+        currentPeriod.start.getMonth() + selectedMonthOffset,
+        monthStartDay
+      );
+      const nextStart = new Date(start.getFullYear(), start.getMonth() + 1, monthStartDay);
+      return { start, nextStart };
+    }
+
+    function updatePeriodNavigation() {
+      const { start, nextStart } = getSelectedBudgetPeriod();
+      const end = new Date(nextStart.getFullYear(), nextStart.getMonth(), nextStart.getDate() - 1);
+      periodLabel.textContent = selectedMonthOffset === 0
+        ? '今月'
+        : `${start.getFullYear()}年${start.getMonth() + 1}月度`;
+      periodDateRange.textContent = `${formatShortDate(start)}〜${formatShortDate(end)}`;
+      historyPeriodLabel.textContent = `${periodLabel.textContent}の支出`;
+      nextMonthButton.disabled = selectedMonthOffset >= 0;
     }
 
     function getCurrentMonthKey() {
@@ -1297,9 +1493,52 @@
       savingGoalMessage.textContent = message.detail;
       savingGoalInput.value = savingGoal;
 
-      if (savingGoal > 0 && remaining >= savingGoal) {
+      if (selectedMonthOffset === 0 && savingGoal > 0 && remaining >= savingGoal) {
         showGoalCelebration(remaining);
       }
+    }
+
+    function hideUndoToast() {
+      if (undoTimer) window.clearTimeout(undoTimer);
+      undoTimer = null;
+      undoAction = null;
+      undoToast.classList.add('hidden');
+      undoToast.classList.remove('flex');
+    }
+
+    function showUndoToast(message, action) {
+      if (undoTimer) window.clearTimeout(undoTimer);
+      undoAction = action;
+      undoToastMessage.textContent = message;
+      undoToast.classList.remove('hidden');
+      undoToast.classList.add('flex');
+      undoTimer = window.setTimeout(hideUndoToast, 6000);
+    }
+
+    function resetExpenseForm() {
+      editingExpenseId = null;
+      form.reset();
+      categoryInput.value = categories[0];
+      paymentMethodInput.value = 'unspecified';
+      expenseDateInput.value = toDateInputValue(new Date());
+      expenseSubmitButton.textContent = '追加';
+      editExpenseNotice.classList.add('hidden');
+      cancelExpenseEditButton.classList.add('hidden');
+    }
+
+    function startEditingExpense(expense) {
+      showPanel('input');
+      editingExpenseId = expense.id;
+      expenseDateInput.value = getExpenseDateValue(expense);
+      amountInput.value = expense.amount;
+      categoryInput.value = expense.category;
+      expenseNoteInput.value = expense.note;
+      paymentMethodInput.value = expense.paymentMethod;
+      expenseSubmitButton.textContent = '変更を保存';
+      editExpenseNotice.classList.remove('hidden');
+      cancelExpenseEditButton.classList.remove('hidden');
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      amountInput.focus({ preventScroll: true });
     }
 
     function showPanel(panelName) {
@@ -1323,9 +1562,9 @@
       }
     }
 
-    function isCurrentMonth(expense) {
+    function isExpenseInSelectedPeriod(expense) {
       const date = parseLocalDate(getExpenseDateValue(expense));
-      const { start, nextStart } = getBudgetPeriod();
+      const { start, nextStart } = getSelectedBudgetPeriod();
       return date >= start && date < nextStart;
     }
 
@@ -1337,8 +1576,8 @@
       return Math.max(Math.ceil((nextStart - todayStart) / dayMs), 1);
     }
 
-    function getCurrentMonthExpenses() {
-      return expenses.filter((expense) => isCurrentMonth(expense));
+    function getSelectedMonthExpenses() {
+      return expenses.filter((expense) => isExpenseInSelectedPeriod(expense));
     }
 
     function getCategoryTotals(currentMonthExpenses) {
@@ -1517,6 +1756,22 @@
       amount.className = 'mt-2 text-xl font-bold text-slate-900';
       amount.textContent = formatYen(expense.amount);
 
+      const extra = document.createElement('p');
+      extra.className = 'mt-1 truncate text-xs text-slate-500';
+      extra.textContent = [expense.note, getPaymentMethodLabel(expense.paymentMethod)]
+        .filter((value) => value && value !== paymentMethodLabels.unspecified)
+        .join(' ・ ');
+      extra.classList.toggle('hidden', !extra.textContent);
+
+      const actions = document.createElement('div');
+      actions.className = 'flex shrink-0 flex-col gap-2';
+
+      const editButton = document.createElement('button');
+      editButton.type = 'button';
+      editButton.className = 'rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100';
+      editButton.dataset.editExpenseId = expense.id;
+      editButton.textContent = '編集';
+
       const deleteButton = document.createElement('button');
       deleteButton.type = 'button';
       deleteButton.className = 'shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-600';
@@ -1524,10 +1779,47 @@
       deleteButton.textContent = '削除';
 
       meta.append(category, date);
-      detail.append(meta, amount);
-      item.append(detail, deleteButton);
+      detail.append(meta, amount, extra);
+      actions.append(editButton, deleteButton);
+      item.append(detail, actions);
 
       return item;
+    }
+
+    function createFavoriteExpenseItem(favorite) {
+      const item = document.createElement('li');
+      item.className = 'flex items-center gap-2 rounded-lg bg-amber-50 p-3';
+
+      const addButton = document.createElement('button');
+      addButton.type = 'button';
+      addButton.dataset.favoriteExpenseId = favorite.id;
+      addButton.className = 'min-w-0 flex-1 text-left';
+
+      const title = document.createElement('p');
+      title.className = 'truncate text-sm font-bold text-slate-900';
+      title.textContent = favorite.note || favorite.category;
+
+      const meta = document.createElement('p');
+      meta.className = 'mt-1 truncate text-xs text-slate-600';
+      meta.textContent = `${formatYen(favorite.amount)} ・ ${favorite.category} ・ ${getPaymentMethodLabel(favorite.paymentMethod)}`;
+      addButton.append(title, meta);
+
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.dataset.deleteFavoriteExpenseId = favorite.id;
+      deleteButton.className = 'shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-500 shadow-sm transition hover:text-rose-600';
+      deleteButton.textContent = '削除';
+      item.append(addButton, deleteButton);
+      return item;
+    }
+
+    function renderFavoriteExpenses() {
+      favoriteCount.textContent = `${favoriteExpenses.length}件`;
+      favoriteEmptyState.classList.toggle('hidden', favoriteExpenses.length > 0);
+      favoriteExpensesList.innerHTML = '';
+      favoriteExpenses.forEach((favorite) => {
+        favoriteExpensesList.appendChild(createFavoriteExpenseItem(favorite));
+      });
     }
 
     function getSubscriptionTotals() {
@@ -1643,7 +1935,7 @@
     function renderBackupReminder() {
       const lastExportDate = getLastCsvExportDate();
       const dataChangedAt = localStorage.getItem(DATA_CHANGED_AT_STORAGE_KEY);
-      const hasData = expenses.length > 0 || subscriptions.length > 0 || monthlyIncome > 0;
+      const hasData = expenses.length > 0 || favoriteExpenses.length > 0 || subscriptions.length > 0 || monthlyIncome > 0;
       const daysSinceExport = lastExportDate
         ? Math.floor((Date.now() - lastExportDate.getTime()) / (24 * 60 * 60 * 1000))
         : Infinity;
@@ -1660,15 +1952,19 @@
 
     function render() {
       renderSettings();
-      const currentMonthExpenses = getCurrentMonthExpenses();
-      const total = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-      const categoryTotals = getCategoryTotals(currentMonthExpenses);
+      updatePeriodNavigation();
+      const selectedMonthExpenses = getSelectedMonthExpenses();
+      const total = selectedMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+      const categoryTotals = getCategoryTotals(selectedMonthExpenses);
       const remaining = monthlyBudget - total;
-      const dailyAmount = Math.floor(remaining / getRemainingDaysInMonth());
+      const dailyAmount = selectedMonthOffset === 0
+        ? Math.floor(remaining / getRemainingDaysInMonth())
+        : remaining;
 
       monthlyTotal.textContent = formatYen(total);
       chartCenterTotal.textContent = formatYen(total);
       remainingBudget.textContent = formatYen(remaining);
+      dailyAvailableLabel.textContent = selectedMonthOffset === 0 ? '今日使えるお金' : '月末の予算差額';
       dailyAvailable.textContent = remaining < 0 ? '予算オーバー' : formatYen(dailyAmount);
       remainingBudget.classList.toggle('text-rose-600', remaining < 0);
       remainingBudget.classList.toggle('text-emerald-900', remaining >= 0);
@@ -1676,7 +1972,7 @@
       updateCategoryChart(categoryTotals, total);
       updateCategoryLegend(categoryTotals, total);
       budgetInput.value = monthlyBudget;
-      const sortedExpenses = expenses
+      const sortedExpenses = selectedMonthExpenses
         .slice()
         .sort((a, b) => {
           const dateDiff = getExpenseTimestamp(b) - getExpenseTimestamp(a);
@@ -1688,15 +1984,15 @@
         ? sortedExpenses
         : sortedExpenses.slice(0, HISTORY_PREVIEW_LIMIT);
 
-      itemCount.textContent = isHistoryExpanded || expenses.length <= HISTORY_PREVIEW_LIMIT
-        ? `${expenses.length}件`
-        : `最新${visibleExpenses.length}件 / 全${expenses.length}件`;
-      emptyState.classList.toggle('hidden', expenses.length > 0);
+      itemCount.textContent = isHistoryExpanded || selectedMonthExpenses.length <= HISTORY_PREVIEW_LIMIT
+        ? `${selectedMonthExpenses.length}件`
+        : `最新${visibleExpenses.length}件 / 全${selectedMonthExpenses.length}件`;
+      emptyState.classList.toggle('hidden', selectedMonthExpenses.length > 0);
       historyList.innerHTML = '';
       historyList.className = isHistoryExpanded
         ? 'max-h-72 space-y-3 overflow-y-auto pr-1'
         : 'space-y-3';
-      historyToggleButton.classList.toggle('hidden', expenses.length <= HISTORY_PREVIEW_LIMIT);
+      historyToggleButton.classList.toggle('hidden', selectedMonthExpenses.length <= HISTORY_PREVIEW_LIMIT);
       historyToggleButton.textContent = isHistoryExpanded ? '最新3件だけ表示' : 'すべて表示';
 
       visibleExpenses
@@ -1705,6 +2001,7 @@
         });
 
       renderSubscriptions();
+      renderFavoriteExpenses();
       renderIncomeBudgetSummary();
       renderBackupReminder();
     }
@@ -1802,12 +2099,57 @@
       }
 
       const category = categories.includes(categoryInput.value) ? categoryInput.value : categories[0];
+      const note = expenseNoteInput.value.trim().slice(0, 60);
+      const paymentMethod = paymentMethods.includes(paymentMethodInput.value)
+        ? paymentMethodInput.value
+        : 'unspecified';
+
+      if (editingExpenseId) {
+        const expenseIndex = expenses.findIndex((expense) => expense.id === editingExpenseId);
+        if (expenseIndex === -1) {
+          resetExpenseForm();
+          render();
+          return;
+        }
+
+        const previousExpense = { ...expenses[expenseIndex] };
+        const updatedExpense = {
+          ...previousExpense,
+          amount: Math.round(amount),
+          category,
+          expenseDate: expenseDateInput.value,
+          note,
+          paymentMethod
+        };
+        expenses[expenseIndex] = updatedExpense;
+        if (!saveExpenses()) {
+          expenses[expenseIndex] = previousExpense;
+          render();
+          return;
+        }
+
+        markDataChanged();
+        resetExpenseForm();
+        render();
+        showUndoToast('支出を変更しました', () => {
+          const currentIndex = expenses.findIndex((expense) => expense.id === previousExpense.id);
+          if (currentIndex === -1) return;
+          expenses[currentIndex] = previousExpense;
+          if (saveExpenses()) {
+            markDataChanged();
+            render();
+          }
+        });
+        return;
+      }
 
       const expense = {
         id: createId(),
         amount: Math.round(amount),
         category,
         expenseDate: expenseDateInput.value,
+        note,
+        paymentMethod,
         createdAt: new Date().toISOString()
       };
 
@@ -1818,11 +2160,112 @@
         return;
       }
       markDataChanged();
+      resetExpenseForm();
       render();
-      form.reset();
-      categoryInput.value = categories[0];
-      expenseDateInput.value = toDateInputValue(new Date());
+      showUndoToast('支出を登録しました', () => {
+        const previousExpenses = expenses;
+        expenses = expenses.filter((savedExpense) => savedExpense.id !== expense.id);
+        if (!saveExpenses()) {
+          expenses = previousExpenses;
+          return;
+        }
+        markDataChanged();
+        render();
+      });
       amountInput.focus();
+    });
+
+    cancelExpenseEditButton.addEventListener('click', () => {
+      resetExpenseForm();
+      amountInput.focus();
+    });
+
+    saveFavoriteButton.addEventListener('click', () => {
+      const amount = Number(amountInput.value);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        amountInput.focus();
+        return;
+      }
+
+      const favorite = normalizeFavoriteExpense({
+        id: createId(),
+        amount,
+        category: categoryInput.value,
+        note: expenseNoteInput.value,
+        paymentMethod: paymentMethodInput.value,
+        createdAt: new Date().toISOString()
+      });
+      if (!favorite) return;
+
+      favoriteExpenses.push(favorite);
+      if (!saveFavoriteExpenses()) {
+        favoriteExpenses = favoriteExpenses.filter((item) => item.id !== favorite.id);
+        return;
+      }
+      markDataChanged();
+      renderFavoriteExpenses();
+      showUndoToast('よく使う支出に登録しました', () => {
+        favoriteExpenses = favoriteExpenses.filter((item) => item.id !== favorite.id);
+        if (saveFavoriteExpenses()) {
+          markDataChanged();
+          renderFavoriteExpenses();
+        }
+      });
+    });
+
+    favoriteExpensesList.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
+
+      const deleteButton = event.target.closest('button[data-delete-favorite-expense-id]');
+      if (deleteButton) {
+        const index = favoriteExpenses.findIndex((favorite) => favorite.id === deleteButton.dataset.deleteFavoriteExpenseId);
+        if (index === -1) return;
+        const [deletedFavorite] = favoriteExpenses.splice(index, 1);
+        if (!saveFavoriteExpenses()) {
+          favoriteExpenses.splice(index, 0, deletedFavorite);
+          return;
+        }
+        markDataChanged();
+        renderFavoriteExpenses();
+        showUndoToast('よく使う支出を削除しました', () => {
+          favoriteExpenses.splice(Math.min(index, favoriteExpenses.length), 0, deletedFavorite);
+          if (saveFavoriteExpenses()) {
+            markDataChanged();
+            renderFavoriteExpenses();
+          }
+        });
+        return;
+      }
+
+      const addButton = event.target.closest('button[data-favorite-expense-id]');
+      if (!addButton) return;
+      const favorite = favoriteExpenses.find((item) => item.id === addButton.dataset.favoriteExpenseId);
+      if (!favorite) return;
+
+      const expense = {
+        id: createId(),
+        amount: favorite.amount,
+        category: favorite.category,
+        expenseDate: toDateInputValue(new Date()),
+        note: favorite.note,
+        paymentMethod: favorite.paymentMethod,
+        createdAt: new Date().toISOString()
+      };
+      expenses.push(expense);
+      if (!saveExpenses()) {
+        expenses = expenses.filter((item) => item.id !== expense.id);
+        return;
+      }
+      selectedMonthOffset = 0;
+      markDataChanged();
+      render();
+      showUndoToast('今日の支出に登録しました', () => {
+        expenses = expenses.filter((item) => item.id !== expense.id);
+        if (saveExpenses()) {
+          markDataChanged();
+          render();
+        }
+      });
     });
 
     subscriptionForm.addEventListener('submit', (event) => {
@@ -1868,14 +2311,23 @@
     historyList.addEventListener('click', (event) => {
       if (!(event.target instanceof Element)) return;
 
+      const editButton = event.target.closest('button[data-edit-expense-id]');
+      if (editButton) {
+        const expense = expenses.find((item) => item.id === editButton.dataset.editExpenseId);
+        if (expense) startEditingExpense(expense);
+        return;
+      }
+
       const deleteButton = event.target.closest('button[data-id]');
       if (!deleteButton) return;
 
       const shouldDelete = window.confirm('この支出を削除しますか？');
       if (!shouldDelete) return;
 
-      const previousExpenses = expenses;
-      expenses = expenses.filter((expense) => expense.id !== deleteButton.dataset.id);
+      const deletedIndex = expenses.findIndex((expense) => expense.id === deleteButton.dataset.id);
+      if (deletedIndex === -1) return;
+      const previousExpenses = expenses.slice();
+      const [deletedExpense] = expenses.splice(deletedIndex, 1);
       if (!saveExpenses()) {
         expenses = previousExpenses;
         render();
@@ -1883,6 +2335,13 @@
       }
       markDataChanged();
       render();
+      showUndoToast('支出を削除しました', () => {
+        expenses.splice(Math.min(deletedIndex, expenses.length), 0, deletedExpense);
+        if (saveExpenses()) {
+          markDataChanged();
+          render();
+        }
+      });
     });
 
     subscriptionList.addEventListener('click', (event) => {
@@ -1895,6 +2354,9 @@
       if (!shouldDelete) return;
 
       const previousSubscriptions = subscriptions;
+      const deletedIndex = subscriptions.findIndex((subscription) => {
+        return subscription.id === deleteButton.dataset.subscriptionId;
+      });
       const deletedSubscription = subscriptions.find((subscription) => {
         return subscription.id === deleteButton.dataset.subscriptionId;
       });
@@ -1909,7 +2371,13 @@
       markDataChanged();
       render();
       if (deletedSubscription) {
-        window.alert(`年間で${formatYen(getSubscriptionYearlyCost(deletedSubscription))}削減できます。`);
+        showUndoToast(`固定費を削除しました（年間 ${formatYen(getSubscriptionYearlyCost(deletedSubscription))}）`, () => {
+          subscriptions.splice(Math.max(deletedIndex, 0), 0, deletedSubscription);
+          if (saveSubscriptions()) {
+            markDataChanged();
+            render();
+          }
+        });
       }
     });
 
@@ -1989,14 +2457,19 @@
 
       const previousCategories = categories.slice();
       const previousExpenses = expenses.slice();
+      const previousFavoriteExpenses = favoriteExpenses.slice();
       categories = categories.map((category) => category === previousName ? nextName : category);
       expenses = expenses.map((expense) => {
         return expense.category === previousName ? { ...expense, category: nextName } : expense;
       });
+      favoriteExpenses = favoriteExpenses.map((favorite) => {
+        return favorite.category === previousName ? { ...favorite, category: nextName } : favorite;
+      });
 
-      if (!saveCategories() || !saveExpenses()) {
+      if (!saveCategories() || !saveExpenses() || !saveFavoriteExpenses()) {
         categories = previousCategories;
         expenses = previousExpenses;
+        favoriteExpenses = previousFavoriteExpenses;
         render();
         return;
       }
@@ -2043,14 +2516,19 @@
 
       const previousCategories = categories.slice();
       const previousExpenses = expenses.slice();
+      const previousFavoriteExpenses = favoriteExpenses.slice();
       categories = categories.filter((category) => category !== categoryToDelete);
       expenses = expenses.map((expense) => {
         return expense.category === categoryToDelete ? { ...expense, category: moveToCategory } : expense;
       });
+      favoriteExpenses = favoriteExpenses.map((favorite) => {
+        return favorite.category === categoryToDelete ? { ...favorite, category: moveToCategory } : favorite;
+      });
 
-      if (!saveCategories() || !saveExpenses()) {
+      if (!saveCategories() || !saveExpenses() || !saveFavoriteExpenses()) {
         categories = previousCategories;
         expenses = previousExpenses;
+        favoriteExpenses = previousFavoriteExpenses;
         render();
         return;
       }
@@ -2065,6 +2543,19 @@
       });
     });
 
+    previousMonthButton.addEventListener('click', () => {
+      selectedMonthOffset -= 1;
+      isHistoryExpanded = false;
+      render();
+    });
+
+    nextMonthButton.addEventListener('click', () => {
+      if (selectedMonthOffset >= 0) return;
+      selectedMonthOffset += 1;
+      isHistoryExpanded = false;
+      render();
+    });
+
     historyToggleButton.addEventListener('click', () => {
       isHistoryExpanded = !isHistoryExpanded;
       render();
@@ -2073,6 +2564,12 @@
     goalCelebrationClose.addEventListener('click', () => {
       goalCelebration.classList.add('hidden');
       goalCelebration.classList.remove('flex');
+    });
+
+    undoToastButton.addEventListener('click', () => {
+      const action = undoAction;
+      hideUndoToast();
+      if (action) action();
     });
 
     exportCsvButton.addEventListener('click', () => {
