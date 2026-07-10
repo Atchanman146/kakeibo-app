@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="app-version" content="2026.07.10-expense-tools">
+  <meta name="app-version" content="2026.07.10-compact-ui">
   <title>シンプル家計簿</title>
   <link rel="apple-touch-icon" href="icon.png">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -91,6 +91,235 @@
         transform: translateY(0) scale(1);
       }
     }
+
+    /* Compact mode: keep every feature while reducing visual weight and scrolling. */
+    body {
+      background: #f8fafc;
+    }
+
+    .app-shell {
+      max-width: 27rem;
+      padding: max(.625rem, env(safe-area-inset-top)) .625rem calc(.625rem + env(safe-area-inset-bottom));
+    }
+
+    .app-shell > header {
+      display: flex;
+      align-items: center;
+      min-height: 2.75rem;
+      padding: .625rem .875rem;
+      border: 1px solid #d1fae5;
+      box-shadow: none;
+    }
+
+    .app-shell > header > p:first-child {
+      display: none;
+    }
+
+    #todayLabel {
+      margin-top: 0;
+      font-size: .875rem;
+      line-height: 1.25rem;
+    }
+
+    #appPanels {
+      margin-top: .5rem;
+    }
+
+    #overviewPanel,
+    #inputPanel,
+    #fixedCostPanel {
+      padding: .875rem;
+      border: 1px solid #e2e8f0;
+      box-shadow: none;
+    }
+
+    #overviewPanel > div:first-child {
+      margin-bottom: .75rem;
+    }
+
+    #overviewPanel > div:first-child > p,
+    #inputPanel > div:first-child > div > p,
+    #fixedCostPanel > div:first-child > p {
+      display: none;
+    }
+
+    #periodLabel,
+    #inputPanel > div:first-child h2,
+    #fixedCostPanel > div:first-child h2 {
+      margin-top: 0;
+      font-size: 1rem;
+      line-height: 1.5rem;
+    }
+
+    #previousMonthButton,
+    #nextMonthButton {
+      width: 2rem;
+      height: 2rem;
+      font-size: 1rem;
+    }
+
+    #overviewPanel > .overview-section {
+      margin-top: .5rem;
+    }
+
+    #overviewPanel > .overview-total {
+      padding: .875rem;
+    }
+
+    #monthlyTotal {
+      margin-top: .25rem;
+      font-size: 1.75rem;
+      line-height: 2.25rem;
+    }
+
+    #overviewPanel .h-40.w-40 {
+      width: 7rem;
+      height: 7rem;
+    }
+
+    .overview-chart-wrap {
+      margin-top: .5rem;
+    }
+
+    #categoryLegend {
+      margin-top: .5rem;
+      gap: .25rem;
+    }
+
+    #overviewPanel > .grid {
+      gap: .5rem;
+    }
+
+    #overviewPanel > .grid > div,
+    #overviewPanel > .overview-feature {
+      padding: .75rem;
+    }
+
+    #overviewPanel .text-2xl,
+    #overviewPanel .text-xl {
+      font-size: 1rem;
+      line-height: 1.5rem;
+    }
+
+    #overviewIncomeMessage,
+    #savingGoalMessage {
+      display: -webkit-box;
+      margin-top: .5rem;
+      padding: .5rem .625rem;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    #inputPanel > div:first-child,
+    #fixedCostPanel > div:first-child {
+      align-items: center;
+      margin-bottom: .75rem;
+    }
+
+    #inputPanel details summary {
+      width: 2.25rem;
+      height: 2.25rem;
+    }
+
+    #expenseForm,
+    #subscriptionForm {
+      gap: .625rem;
+      padding-bottom: .875rem;
+    }
+
+    #expenseForm > :not([hidden]) ~ :not([hidden]),
+    #subscriptionForm > :not([hidden]) ~ :not([hidden]) {
+      margin-top: .625rem;
+    }
+
+    #expenseForm label,
+    #subscriptionForm label {
+      font-size: .75rem;
+      line-height: 1rem;
+    }
+
+    #expenseForm input,
+    #expenseForm select,
+    #subscriptionForm input,
+    #subscriptionForm select {
+      min-height: 2.75rem;
+      margin-top: .25rem;
+      padding: .625rem .75rem;
+      font-size: .875rem;
+    }
+
+    #expenseForm > .grid,
+    #incomeBudgetForm > .grid,
+    #overviewPanel .grid {
+      gap: .5rem;
+    }
+
+    #expenseForm button,
+    #subscriptionForm button,
+    #budgetForm button,
+    #savingGoalForm button {
+      min-height: 2.75rem;
+      padding: .625rem .75rem;
+    }
+
+    #inputPanel > section,
+    #incomeBudgetForm,
+    #budgetForm,
+    #savingGoalForm,
+    #inputPanel > div:last-child,
+    #fixedCostPanel > div:last-child {
+      margin-top: .875rem;
+      padding-bottom: .875rem;
+    }
+
+    #incomeBudgetForm {
+      padding: .75rem;
+    }
+
+    #historyList,
+    #favoriteExpensesList,
+    #subscriptionList {
+      gap: .5rem;
+    }
+
+    #historyList > :not([hidden]) ~ :not([hidden]),
+    #favoriteExpensesList > :not([hidden]) ~ :not([hidden]),
+    #subscriptionList > :not([hidden]) ~ :not([hidden]) {
+      margin-top: .5rem;
+    }
+
+    .app-shell > nav {
+      margin-top: .5rem;
+      padding: .25rem;
+      border: 1px solid #e2e8f0;
+      border-radius: .875rem;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, .06);
+    }
+
+    .app-shell > nav button {
+      flex-direction: row;
+      justify-content: center;
+      gap: .375rem;
+      min-height: 2.5rem;
+      padding: .375rem .5rem;
+      border-radius: .625rem;
+    }
+
+    .app-shell > nav button > span:first-child {
+      font-size: .75rem;
+    }
+
+    #undoToast {
+      bottom: 4.25rem;
+    }
+
+    @media (min-width: 640px) {
+      .app-shell {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-800">
@@ -118,11 +347,11 @@
           </div>
         </div>
 
-        <div class="rounded-lg bg-slate-50 p-5">
+        <div class="overview-section overview-total rounded-lg bg-slate-50 p-5">
           <p class="text-sm font-medium text-slate-500">選択期間の総支出</p>
           <p id="monthlyTotal" class="mt-3 text-4xl font-bold tracking-normal text-slate-900">¥0</p>
 
-          <div class="mt-5 flex justify-center">
+          <div class="overview-chart-wrap mt-5 flex justify-center">
             <div class="relative h-40 w-40">
               <canvas id="categoryChart" aria-label="カテゴリ別の支出割合"></canvas>
               <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
@@ -134,7 +363,7 @@
           <div id="categoryLegend" class="mt-4 grid grid-cols-2 gap-2 text-xs"></div>
         </div>
 
-        <div class="mt-4 grid grid-cols-2 gap-3">
+        <div class="overview-section mt-4 grid grid-cols-2 gap-3">
           <div class="rounded-lg bg-emerald-50 p-4">
             <p class="text-xs font-semibold text-emerald-700">残り予算</p>
             <p id="remainingBudget" class="mt-2 text-xl font-bold text-emerald-900">¥0</p>
@@ -145,7 +374,7 @@
           </div>
         </div>
 
-        <div class="mt-4 grid grid-cols-2 gap-3">
+        <div class="overview-section mt-4 grid grid-cols-2 gap-3">
           <div class="rounded-lg bg-teal-50 p-4">
             <p class="text-xs font-semibold text-teal-700">合計月額コスト</p>
             <p id="subscriptionMonthlyTotal" class="mt-2 text-2xl font-bold text-teal-900">¥0</p>
@@ -156,7 +385,7 @@
           </div>
         </div>
 
-        <div class="mt-4 rounded-lg bg-cyan-50 p-4">
+        <div class="overview-section overview-feature mt-4 rounded-lg bg-cyan-50 p-4">
           <p class="text-xs font-semibold text-cyan-700">給料から見た予算候補</p>
           <p id="overviewSuggestedBudget" class="mt-2 text-2xl font-bold text-cyan-950">¥0</p>
           <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
@@ -174,7 +403,7 @@
           </p>
         </div>
 
-        <div class="mt-4 rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 p-5">
+        <div class="overview-section overview-feature mt-4 rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 p-5">
           <div class="flex items-start justify-between gap-3">
             <div>
               <p class="text-sm font-medium text-emerald-700">今月の節約目標</p>
@@ -290,7 +519,7 @@
                 <ul id="categorySettingsList" class="mt-3 space-y-2"></ul>
               </div>
               <p class="mt-3 border-t border-slate-100 pt-3 text-[11px] font-medium text-slate-400">
-                version 2026.07.10-expense-tools
+                version 2026.07.10-compact-ui
               </p>
             </div>
           </details>
