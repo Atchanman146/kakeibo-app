@@ -86,3 +86,16 @@ test('fixed costs remain historically active even when their monthly equivalent 
   assert.equal(isSubscriptionActiveInPeriod({ activeFrom: '2026-10-01' }, period), false);
   assert.equal(isSubscriptionActiveInPeriod({ activeFrom: '2026-01-01', archivedAt: '2026-08-31' }, period), false);
 });
+
+test('versioned fixed costs preserve the old amount without double-counting the current period', () => {
+  const subscriptions = [
+    { amount: 80000, cycle: 'monthly', activeFrom: '2026-01-01', archivedAt: '2026-08-31' },
+    { amount: 90000, cycle: 'monthly', activeFrom: '2026-09-01', archivedAt: null }
+  ];
+
+  const august = summarizePeriod({ transactions: [], subscriptions, period: getBudgetPeriod('2026-08-10', 1) });
+  const september = summarizePeriod({ transactions: [], subscriptions, period: getBudgetPeriod('2026-09-10', 1) });
+
+  assert.equal(august.fixedExpense, 80000);
+  assert.equal(september.fixedExpense, 90000);
+});

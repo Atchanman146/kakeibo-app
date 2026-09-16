@@ -631,7 +631,7 @@
 
         <section id="incomeBudgetSummary" class="mt-5 rounded-lg bg-cyan-50 p-4">
           <div>
-            <p class="text-sm font-bold text-cyan-900">今月の変動費予算</p>
+            <p id="incomeBudgetPeriodLabel" class="text-sm font-bold text-cyan-900">今月の変動費予算</p>
             <p class="mt-1 text-xs leading-relaxed text-slate-500">収入明細から固定費を引いた金額を予算候補として表示します。</p>
           </div>
 
@@ -660,7 +660,7 @@
         </section>
 
         <form id="budgetForm" class="mt-5 border-b border-slate-100 pb-5">
-          <label for="budget" class="block text-sm font-semibold text-slate-700">今月の予算</label>
+          <label id="budgetLabel" for="budget" class="block text-sm font-semibold text-slate-700">今月の予算</label>
           <div class="mt-2 flex gap-2">
             <input
               id="budget"
@@ -681,7 +681,7 @@
         </form>
 
         <form id="savingGoalForm" class="mt-5 border-b border-slate-100 pb-5">
-          <label for="savingGoalInput" class="block text-sm font-semibold text-slate-700">今月残したい金額</label>
+          <label id="savingGoalLabel" for="savingGoalInput" class="block text-sm font-semibold text-slate-700">今月残したい金額</label>
           <div class="mt-2 flex gap-2">
             <input
               id="savingGoalInput"

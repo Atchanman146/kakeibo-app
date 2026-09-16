@@ -96,6 +96,7 @@
   let categoryChart = null;
   let loadWarning = '';
   let corruptedStateDetected = false;
+  let lastFocusedBeforeModal = null;
   let lastExpenseCategory = DEFAULT_CATEGORIES[0];
   let lastPaymentMethod = 'unspecified';
 
@@ -238,7 +239,11 @@
     const monthStartDayRaw = Number(localStorage.getItem(LEGACY_KEYS.monthStartDay));
     const monthStartDay = Number.isInteger(monthStartDayRaw) && monthStartDayRaw >= 1 && monthStartDayRaw <= 28 ? monthStartDayRaw : 1;
     const categories = uniqueCategoryNames(safeJsonParse(localStorage.getItem(LEGACY_KEYS.categories), DEFAULT_CATEGORIES));
-    const transactions = (safeJsonParse(localStorage.getItem(LEGACY_KEYS.transactions), []) || [])
+    const storedLegacyTransactions = safeJsonParse(localStorage.getItem(LEGACY_KEYS.transactions), []);
+    if (localStorage.getItem(LEGACY_KEYS.transactions) !== null && !Array.isArray(storedLegacyTransactions)) {
+      loadWarning = '古い保存データの一部を読み込めなかったため、読み込める項目だけを復元しました。';
+    }
+    const transactions = (Array.isArray(storedLegacyTransactions) ? storedLegacyTransactions : [])
       .map((item) => ({ ...item, type: 'expense', transactionDate: item.expenseDate }));
     const legacyIncome = Number(localStorage.getItem(LEGACY_KEYS.income));
     if (Number.isFinite(legacyIncome) && legacyIncome > 0) {
@@ -371,11 +376,17 @@
       : `${type === 'income' ? '収入' : '支出'}を追加`;
   }
 
+  function getDefaultTransactionDate() {
+    if (selectedMonthOffset === 0) return toDateInputValue(new Date());
+    const { nextStart } = getSelectedPeriod();
+    return toDateInputValue(new Date(nextStart.getFullYear(), nextStart.getMonth(), nextStart.getDate() - 1));
+  }
+
   function resetTransactionForm({ preserveExpenseDefaults = true } = {}) {
     editingTransactionId = null;
     form.reset();
     transactionTypeInput.value = 'expense';
-    expenseDateInput.value = toDateInputValue(new Date());
+    expenseDateInput.value = getDefaultTransactionDate();
     paymentMethodInput.value = preserveExpenseDefaults ? lastPaymentMethod : 'unspecified';
     editExpenseNotice.classList.add('hidden');
     cancelExpenseEditButton.classList.add('hidden');
@@ -418,10 +429,11 @@
   }
 
   function showPanel(panelName) {
+    const previousPanel = activePanel;
     activePanel = panelName;
-    if (panelName === 'input' && !editingTransactionId) {
-      selectedMonthOffset = 0;
+    if (panelName === 'input' && !editingTransactionId && previousPanel !== 'input') {
       isHistoryExpanded = false;
+      resetTransactionForm();
     }
     if (panelName === 'fixedCost') {
       selectedMonthOffset = 0;
@@ -732,6 +744,11 @@
     byId('savingGoalRemaining').textContent = goal > 0 ? formatYen(goalStatus.amountLeft) : '未設定';
     byId('savingGoalShortMessage').textContent = goalMessage.short;
     byId('savingGoalMessage').textContent = goalMessage.detail;
+    const periodWord = selectedMonthOffset === 0 ? '今月' : '選択期間';
+    byId('incomeBudgetPeriodLabel').textContent = `${periodWord}の変動費予算`;
+    byId('budgetLabel').textContent = `${periodWord}の予算`;
+    byId('savingGoalLabel').textContent = `${periodWord}に残したい金額`;
+    byId('applySuggestedBudgetButton').textContent = `${periodWord}の予算に反映`;
     budgetInput.value = budget > 0 ? budget : '';
     savingGoalInput.value = goal > 0 ? goal : '';
 
@@ -760,6 +777,8 @@
       state.celebratedPeriods.push(periodKey);
       persistState(null, false);
       byId('goalCelebrationMessage').textContent = `今月の収支は${formatYen(summary.balance)}です。目標を達成しています。`;
+      lastFocusedBeforeModal = document.activeElement;
+      document.querySelector('main').inert = true;
       goalCelebration.classList.remove('hidden');
       goalCelebration.classList.add('flex');
       requestAnimationFrame(() => goalCelebrationClose.focus());
@@ -840,15 +859,18 @@
     const records = rows.slice(1).map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ''])));
     const imported = normalizeState({ version: 2, monthStartDay: 1, categories: [], transactions: [], favoriteExpenses: [], subscriptions: [], monthlyBudgets: {}, savingGoals: {} });
     const invalid = [];
-    const currentKey = getPeriodKey(getBudgetPeriod(new Date(), state.monthStartDay));
     imported.categories = uniqueCategoryNames(records.filter((record) => record.type === 'category').map((record) => restoreCsvText(record.category)));
     imported.monthStartDay = state.monthStartDay;
     records.forEach((record, index) => {
+      if (record.type !== 'config' && record.type !== 'monthStartDay') return;
+      const value = Number(record.value || record.budget);
+      if (Number.isInteger(value) && value >= 1 && value <= 28) imported.monthStartDay = value;
+      else invalid.push(`${index + 2}行目: 月の開始日が正しくありません`);
+    });
+    const currentKey = getPeriodKey(getBudgetPeriod(new Date(), imported.monthStartDay));
+    records.forEach((record, index) => {
       const rowNumber = index + 2;
       if (record.type === 'config' || record.type === 'monthStartDay') {
-        const value = Number(record.value || record.budget);
-        if (Number.isInteger(value) && value >= 1 && value <= 28) imported.monthStartDay = value;
-        else invalid.push(`${rowNumber}行目: 月の開始日が正しくありません`);
         return;
       }
       if (record.type === 'category') return;
@@ -865,7 +887,17 @@
         return;
       }
       if (record.type === 'transaction' || record.type === 'expense') {
-        imported.transactions.push({ id: restoreCsvText(record.id), type: record.type === 'expense' ? 'expense' : record.transactionType, amount: record.amount, category: restoreCsvText(record.category), transactionDate: restoreCsvText(record.transactionDate || record.expenseDate), note: restoreCsvText(record.note), paymentMethod: restoreCsvText(record.paymentMethod), createdAt: restoreCsvText(record.createdAt) });
+        const transactionDate = restoreCsvText(record.transactionDate || record.expenseDate);
+        const transactionType = record.type === 'expense' ? 'expense' : record.transactionType;
+        if (!isValidDateInput(transactionDate)) {
+          invalid.push(`${rowNumber}行目: 収支の日付が正しくありません`);
+          return;
+        }
+        if (transactionType !== 'income' && transactionType !== 'expense') {
+          invalid.push(`${rowNumber}行目: 収支の種別が正しくありません`);
+          return;
+        }
+        imported.transactions.push({ id: restoreCsvText(record.id), type: transactionType, amount: record.amount, category: restoreCsvText(record.category), transactionDate, note: restoreCsvText(record.note), paymentMethod: restoreCsvText(record.paymentMethod), createdAt: restoreCsvText(record.createdAt) });
         return;
       }
       if (record.type === 'favoriteExpense') {
@@ -874,7 +906,9 @@
       }
       if (record.type === 'subscription') {
         imported.subscriptions.push({ id: restoreCsvText(record.id), amount: record.amount, cycle: restoreCsvText(record.cycle), name: restoreCsvText(record.name), createdAt: restoreCsvText(record.createdAt), activeFrom: restoreCsvText(record.activeFrom), archivedAt: restoreCsvText(record.archivedAt) });
+        return;
       }
+      invalid.push(`${rowNumber}行目: データ種別が正しくありません`);
     });
     if (invalid.length) throw new Error(`CSVに読み込めない行があります。\n${invalid.slice(0, 5).join('\n')}`);
     const expectedCounts = {
@@ -1015,7 +1049,7 @@
     const period = getSelectedPeriod();
     const summary = summarizePeriod({ transactions: state.transactions, subscriptions: state.subscriptions, period });
     const suggested = Math.max(summary.income - getSubscriptionTotals(period).monthly, 0);
-    if (!window.confirm(`${formatYen(suggested)}を今月の変動費予算に反映しますか？`)) return;
+    if (!window.confirm(`${formatYen(suggested)}を選択期間の変動費予算に反映しますか？`)) return;
     const previous = cloneState();
     state.monthlyBudgets[getSelectedPeriodKey()] = suggested;
     if (!persistState(previous)) return;
@@ -1032,7 +1066,24 @@
     if (editingSubscriptionId) {
       const index = state.subscriptions.findIndex((item) => item.id === editingSubscriptionId);
       if (index === -1) return;
-      state.subscriptions[index] = { ...state.subscriptions[index], name, amount, cycle: subscriptionCycleInput.value === 'yearly' ? 'yearly' : 'monthly' };
+      const current = state.subscriptions[index];
+      const cycle = subscriptionCycleInput.value === 'yearly' ? 'yearly' : 'monthly';
+      if (current.amount === amount && current.cycle === cycle) {
+        state.subscriptions[index] = { ...current, name };
+      } else {
+        const currentPeriod = getBudgetPeriod(new Date(), state.monthStartDay);
+        const previousDay = new Date(currentPeriod.start.getFullYear(), currentPeriod.start.getMonth(), currentPeriod.start.getDate() - 1);
+        state.subscriptions[index] = { ...current, archivedAt: toDateInputValue(previousDay) };
+        state.subscriptions.push({
+          id: createId(),
+          name,
+          amount,
+          cycle,
+          activeFrom: toDateInputValue(currentPeriod.start),
+          archivedAt: null,
+          createdAt: new Date().toISOString()
+        });
+      }
     } else {
       state.subscriptions.push({ id: createId(), name, amount, cycle: subscriptionCycleInput.value === 'yearly' ? 'yearly' : 'monthly', activeFrom: toDateInputValue(new Date()), archivedAt: null, createdAt: new Date().toISOString() });
     }
@@ -1140,7 +1191,13 @@
   byId('nextMonthButton').addEventListener('click', () => { if (selectedMonthOffset < 0) selectedMonthOffset += 1; isHistoryExpanded = false; render(); });
   byId('historyToggleButton').addEventListener('click', () => { isHistoryExpanded = !isHistoryExpanded; render(); });
   undoToastButton.addEventListener('click', () => { const action = undoAction; hideUndoToast(); if (action) action(); });
-  goalCelebrationClose.addEventListener('click', () => { goalCelebration.classList.add('hidden'); goalCelebration.classList.remove('flex'); });
+  goalCelebrationClose.addEventListener('click', () => {
+    goalCelebration.classList.add('hidden');
+    goalCelebration.classList.remove('flex');
+    document.querySelector('main').inert = false;
+    if (lastFocusedBeforeModal instanceof HTMLElement) lastFocusedBeforeModal.focus();
+    lastFocusedBeforeModal = null;
+  });
   goalCelebration.addEventListener('keydown', (event) => { if (event.key === 'Escape') goalCelebrationClose.click(); });
   byId('exportCsvButton').addEventListener('click', exportCsvBackup);
   byId('quickExportCsvButton').addEventListener('click', exportCsvBackup);
