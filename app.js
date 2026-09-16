@@ -239,9 +239,21 @@
     const monthStartDayRaw = Number(localStorage.getItem(LEGACY_KEYS.monthStartDay));
     const monthStartDay = Number.isInteger(monthStartDayRaw) && monthStartDayRaw >= 1 && monthStartDayRaw <= 28 ? monthStartDayRaw : 1;
     const categories = uniqueCategoryNames(safeJsonParse(localStorage.getItem(LEGACY_KEYS.categories), DEFAULT_CATEGORIES));
-    const storedLegacyTransactions = safeJsonParse(localStorage.getItem(LEGACY_KEYS.transactions), []);
-    if (localStorage.getItem(LEGACY_KEYS.transactions) !== null && !Array.isArray(storedLegacyTransactions)) {
+    const legacyTransactionsText = localStorage.getItem(LEGACY_KEYS.transactions);
+    let storedLegacyTransactions = [];
+    if (legacyTransactionsText !== null) {
+      try {
+        storedLegacyTransactions = JSON.parse(legacyTransactionsText);
+      } catch {
+        corruptedStateDetected = true;
+      }
+    }
+    if (legacyTransactionsText !== null && !Array.isArray(storedLegacyTransactions)) {
+      corruptedStateDetected = true;
       loadWarning = '古い保存データの一部を読み込めなかったため、読み込める項目だけを復元しました。';
+    }
+    if (corruptedStateDetected && !loadWarning) {
+      loadWarning = '古い保存データの一部を読み込めませんでした。既存データは上書きしていません。CSVバックアップがあれば読み込んでください。';
     }
     const transactions = (Array.isArray(storedLegacyTransactions) ? storedLegacyTransactions : [])
       .map((item) => ({ ...item, type: 'expense', transactionDate: item.expenseDate }));
@@ -877,7 +889,10 @@
       if (record.type === 'budget' || record.type === 'savingGoal') {
         const value = Number(record.value || record.budget);
         const key = record.periodKey || currentKey;
-        if (!Number.isFinite(value) || value < 0) invalid.push(`${rowNumber}行目: 設定金額が正しくありません`);
+        const keyDate = parseLocalDate(key);
+        if (!isValidDateInput(key) || keyDate.getDate() !== imported.monthStartDay) {
+          invalid.push(`${rowNumber}行目: 設定期間が正しくありません`);
+        } else if (!Number.isFinite(value) || value < 0) invalid.push(`${rowNumber}行目: 設定金額が正しくありません`);
         else (record.type === 'budget' ? imported.monthlyBudgets : imported.savingGoals)[key] = Math.round(value);
         return;
       }
@@ -905,7 +920,17 @@
         return;
       }
       if (record.type === 'subscription') {
-        imported.subscriptions.push({ id: restoreCsvText(record.id), amount: record.amount, cycle: restoreCsvText(record.cycle), name: restoreCsvText(record.name), createdAt: restoreCsvText(record.createdAt), activeFrom: restoreCsvText(record.activeFrom), archivedAt: restoreCsvText(record.archivedAt) });
+        const activeFrom = restoreCsvText(record.activeFrom);
+        const archivedAt = restoreCsvText(record.archivedAt);
+        if ((activeFrom && !isValidDateInput(activeFrom)) || (archivedAt && !isValidDateInput(archivedAt))) {
+          invalid.push(`${rowNumber}行目: 固定費の期間が正しくありません`);
+          return;
+        }
+        if (activeFrom && archivedAt && parseLocalDate(archivedAt) < parseLocalDate(activeFrom)) {
+          invalid.push(`${rowNumber}行目: 固定費の終了日が開始日より前です`);
+          return;
+        }
+        imported.subscriptions.push({ id: restoreCsvText(record.id), amount: record.amount, cycle: restoreCsvText(record.cycle), name: restoreCsvText(record.name), createdAt: restoreCsvText(record.createdAt), activeFrom, archivedAt });
         return;
       }
       invalid.push(`${rowNumber}行目: データ種別が正しくありません`);
