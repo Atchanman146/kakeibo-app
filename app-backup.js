@@ -35,14 +35,14 @@
 
   function escapeCsvCell(value) {
     let text = String(value ?? '');
-    if (/^[\s\t\r\n]*[=+\-@]/.test(text)) text = `'${text}`;
+    if (/^(?:'+)?[\s\t\r\n]*[=+\-@]/.test(text)) text = `'${text}`;
     text = text.replace(/"/g, '""');
     return /[",\r\n]/.test(text) ? `"${text}"` : text;
   }
 
   function restoreCsvText(value) {
     const text = String(value ?? '');
-    return /^'[\s\t\r\n]*[=+\-@]/.test(text) ? text.slice(1) : text;
+    return /^'+[\s\t\r\n]*[=+\-@]/.test(text) ? text.slice(1) : text;
   }
 
   function buildCsvBackup(state) {

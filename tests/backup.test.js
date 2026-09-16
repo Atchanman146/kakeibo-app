@@ -29,6 +29,33 @@ test('CSV backup neutralizes spreadsheet formulas and restores the original text
   assert.equal(restoreCsvText(transactionRow[11]), '=1+1');
 });
 
+test('CSV backup preserves a user-entered apostrophe before formula-like text', () => {
+  const notes = ["'=1+1", "'@name", "'text"];
+  const csv = buildCsvBackup({
+    monthStartDay: 1,
+    categories: ['その他'],
+    monthlyBudgets: {},
+    savingGoals: {},
+    transactions: notes.map((note, index) => ({
+      id: `tx-${index}`,
+      amount: index + 1,
+      category: 'その他',
+      transactionDate: '2026-09-01',
+      type: 'expense',
+      createdAt: '2026-09-01T10:00:00.000Z',
+      note,
+      paymentMethod: 'unspecified'
+    })),
+    favoriteExpenses: [],
+    subscriptions: []
+  });
+  const restoredNotes = parseCsv(csv)
+    .filter((row) => row[0] === 'transaction')
+    .map((row) => restoreCsvText(row[11]));
+
+  assert.deepEqual(restoredNotes, notes);
+});
+
 test('CSV backup keeps transactions, period settings, categories, favorites, and fixed costs', () => {
   const csv = buildCsvBackup({
     monthStartDay: 25,
