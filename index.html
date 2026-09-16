@@ -10,7 +10,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="app-version" content="2026.07.13-security-hardening">
+  <meta name="app-version" content="2026.09.16-monthly-ledger-v2">
   <title>シンプル家計簿</title>
   <link rel="apple-touch-icon" href="icon.png">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -29,9 +29,7 @@
     }
 
     #splashScreen.splash-hidden {
-      visibility: hidden;
-      opacity: 0;
-      pointer-events: none;
+      display: none;
     }
 
     .splash-logo {
@@ -155,8 +153,8 @@
 
     #previousMonthButton,
     #nextMonthButton {
-      width: 2rem;
-      height: 2rem;
+      width: 2.75rem;
+      height: 2.75rem;
       font-size: 1rem;
     }
 
@@ -181,6 +179,13 @@
 
     .overview-chart-wrap {
       margin-top: .5rem;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    #categoryChart {
+      width: 100% !important;
+      height: 100% !important;
     }
 
     #categoryLegend {
@@ -220,8 +225,8 @@
     }
 
     #inputPanel details summary {
-      width: 2.25rem;
-      height: 2.25rem;
+      width: 2.75rem;
+      height: 2.75rem;
     }
 
     #expenseForm,
@@ -252,7 +257,7 @@
     }
 
     #expenseForm > .grid,
-    #incomeBudgetForm > .grid,
+    #incomeBudgetSummary > .grid,
     #overviewPanel .grid {
       gap: .5rem;
     }
@@ -266,7 +271,7 @@
     }
 
     #inputPanel > section,
-    #incomeBudgetForm,
+    #incomeBudgetSummary,
     #budgetForm,
     #savingGoalForm,
     #inputPanel > div:last-child,
@@ -275,7 +280,7 @@
       padding-bottom: .875rem;
     }
 
-    #incomeBudgetForm {
+    #incomeBudgetSummary {
       padding: .75rem;
     }
 
@@ -303,7 +308,7 @@
       flex-direction: row;
       justify-content: center;
       gap: .375rem;
-      min-height: 2.5rem;
+      min-height: 2.75rem;
       padding: .375rem .5rem;
       border-radius: .625rem;
     }
@@ -349,31 +354,15 @@
           </div>
         </div>
 
-        <div id="backupStatusCard" class="mb-4 hidden rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="text-sm font-bold">バックアップ推奨</p>
-              <p id="backupStatusText" class="mt-1 text-xs leading-relaxed">データ保護のため、CSV書き出しをおすすめします。</p>
-            </div>
-            <button
-              id="quickExportCsvButton"
-              type="button"
-              class="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-amber-700 active:scale-[0.99]"
-            >
-              書き出し
-            </button>
-          </div>
-        </div>
-
         <div class="overview-section overview-total rounded-lg bg-slate-50 p-5">
-          <p class="text-sm font-medium text-slate-500">選択期間の総支出</p>
+          <p class="text-sm font-medium text-slate-500">選択期間の支出合計（固定費を含む）</p>
           <p id="monthlyTotal" class="mt-3 text-4xl font-bold tracking-normal text-slate-900">¥0</p>
 
           <div class="overview-chart-wrap mt-5 flex justify-center">
             <div class="relative h-40 w-40">
               <canvas id="categoryChart" aria-label="カテゴリ別の支出割合"></canvas>
               <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                <p class="text-[11px] font-semibold text-slate-400">総支出</p>
+                <p class="text-[11px] font-semibold text-slate-500">変動支出</p>
                 <p id="chartCenterTotal" class="mt-1 max-w-28 break-words text-lg font-bold leading-tight text-slate-900">¥0</p>
               </div>
             </div>
@@ -383,32 +372,32 @@
 
         <div class="overview-section mt-4 grid grid-cols-2 gap-3">
           <div class="rounded-lg bg-emerald-50 p-4">
-            <p class="text-xs font-semibold text-emerald-700">残り予算</p>
-            <p id="remainingBudget" class="mt-2 text-xl font-bold text-emerald-900">¥0</p>
+            <p class="text-xs font-semibold text-emerald-700">収入</p>
+            <p id="monthlyIncomeTotal" class="mt-2 text-xl font-bold text-emerald-900">¥0</p>
           </div>
           <div class="rounded-lg bg-blue-50 p-4">
-            <p id="dailyAvailableLabel" class="text-xs font-semibold text-blue-700">今日使えるお金</p>
-            <p id="dailyAvailable" class="mt-2 text-xl font-bold text-blue-900">¥0</p>
+            <p class="text-xs font-semibold text-blue-700">収支</p>
+            <p id="monthlyBalance" class="mt-2 text-xl font-bold text-blue-900">¥0</p>
           </div>
         </div>
 
         <div class="overview-section mt-4 grid grid-cols-2 gap-3">
-          <div class="rounded-lg bg-teal-50 p-4">
-            <p class="text-xs font-semibold text-teal-700">合計月額コスト</p>
-            <p id="subscriptionMonthlyTotal" class="mt-2 text-2xl font-bold text-teal-900">¥0</p>
+          <div class="rounded-lg bg-emerald-50 p-4">
+            <p class="text-xs font-semibold text-emerald-700">変動費の残り予算</p>
+            <p id="remainingBudget" class="mt-2 text-xl font-bold text-emerald-900">未設定</p>
           </div>
-          <div class="rounded-lg bg-indigo-50 p-4">
-            <p class="text-xs font-semibold text-indigo-700">合計年額コスト</p>
-            <p id="subscriptionYearlyTotal" class="mt-2 text-2xl font-bold text-indigo-900">¥0</p>
+          <div class="rounded-lg bg-blue-50 p-4">
+            <p id="dailyAvailableLabel" class="text-xs font-semibold text-blue-700">今日使える変動費</p>
+            <p id="dailyAvailable" class="mt-2 text-xl font-bold text-blue-900">未設定</p>
           </div>
         </div>
 
         <div class="overview-section overview-feature mt-4 rounded-lg bg-cyan-50 p-4">
-          <p class="text-xs font-semibold text-cyan-700">給料から見た予算候補</p>
+          <p class="text-xs font-semibold text-cyan-700">収入から見た予算候補</p>
           <p id="overviewSuggestedBudget" class="mt-2 text-2xl font-bold text-cyan-950">¥0</p>
           <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
             <div class="rounded-lg bg-white/75 p-3">
-              <p class="font-semibold text-slate-500">給料</p>
+              <p class="font-semibold text-slate-500">収入</p>
               <p id="overviewIncome" class="mt-1 font-bold text-slate-900">¥0</p>
             </div>
             <div class="rounded-lg bg-white/75 p-3">
@@ -417,15 +406,15 @@
             </div>
           </div>
           <p id="overviewIncomeMessage" class="mt-3 text-xs leading-relaxed text-slate-500">
-            給料を入力すると、固定費を引いた予算候補が見られます。
+            収入を登録すると、固定費を引いた予算候補が見られます。
           </p>
         </div>
 
         <div class="overview-section overview-feature mt-4 rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 p-5">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-sm font-medium text-emerald-700">今月の節約目標</p>
-              <p id="savingGoalAmount" class="mt-2 text-2xl font-bold text-emerald-950">¥10,000</p>
+              <p class="text-sm font-medium text-emerald-700">この期間に残したい金額</p>
+              <p id="savingGoalAmount" class="mt-2 text-2xl font-bold text-emerald-950">未設定</p>
             </div>
             <div class="rounded-full bg-white/80 px-3 py-1 text-sm font-bold text-emerald-700 shadow-sm">
               <span id="savingGoalProgress">0%</span>
@@ -448,8 +437,13 @@
           </div>
 
           <p id="savingGoalMessage" class="mt-4 rounded-lg bg-white/70 px-4 py-3 text-sm leading-relaxed text-slate-600">
-            目標を設定すると、今月の残り予算から達成状況を見られます。
+            目標を設定すると、選択期間の収支から達成状況を確認できます。
           </p>
+        </div>
+
+        <div id="backupStatusCard" class="overview-section hidden items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+          <p id="backupStatusText" class="min-w-0 text-xs leading-relaxed">データ保護のため、CSV書き出しをおすすめします。</p>
+          <button id="quickExportCsvButton" type="button" class="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-amber-700">書き出し</button>
         </div>
       </section>
 
@@ -457,7 +451,7 @@
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <p class="text-sm font-medium text-slate-500">家計簿入力</p>
-            <h2 class="mt-1 text-xl font-bold text-slate-900">支出と予算</h2>
+            <h2 class="mt-1 text-xl font-bold text-slate-900">収支を入力</h2>
           </div>
 
           <details class="relative">
@@ -537,7 +531,7 @@
                 <ul id="categorySettingsList" class="mt-3 space-y-2"></ul>
               </div>
               <p class="mt-3 border-t border-slate-100 pt-3 text-[11px] font-medium text-slate-400">
-                version 2026.07.10-compact-ui
+                version 2026.09.16-monthly-ledger-v2
               </p>
             </div>
           </details>
@@ -547,16 +541,6 @@
           <div id="editExpenseNotice" class="hidden rounded-lg bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800">
             支出を編集中です
           </div>
-          <div>
-            <label for="expenseDate" class="block text-sm font-semibold text-slate-700">日付</label>
-            <input
-              id="expenseDate"
-              type="date"
-              class="mt-2 block w-full max-w-full rounded-lg border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-left text-base font-medium text-slate-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
-              required
-            >
-          </div>
-
           <div>
             <label for="amount" class="block text-sm font-semibold text-slate-700">金額</label>
             <input
@@ -571,8 +555,27 @@
             >
           </div>
 
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="transactionType" class="block text-sm font-semibold text-slate-700">種類</label>
+              <select id="transactionType" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100">
+                <option value="expense">支出</option>
+                <option value="income">収入</option>
+              </select>
+            </div>
+            <div>
+              <label for="expenseDate" class="block text-sm font-semibold text-slate-700">日付</label>
+              <input
+                id="expenseDate"
+                type="date"
+                class="mt-2 block w-full max-w-full rounded-lg border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-left text-base font-medium text-slate-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+                required
+              >
+            </div>
+          </div>
+
           <div>
-            <label for="category" class="block text-sm font-semibold text-slate-700">カテゴリ</label>
+            <label id="categoryLabel" for="category" class="block text-sm font-semibold text-slate-700">支出カテゴリ</label>
             <select
               id="category"
               class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
@@ -595,7 +598,7 @@
             >
           </div>
 
-          <div>
+          <div id="paymentMethodField">
             <label for="paymentMethod" class="block text-sm font-semibold text-slate-700">支払い方法</label>
             <select id="paymentMethod" class="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100">
               <option value="unspecified">未設定</option>
@@ -608,7 +611,7 @@
           </div>
 
           <div class="grid grid-cols-2 gap-3">
-            <button id="expenseSubmitButton" type="submit" class="rounded-lg bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99]">追加</button>
+            <button id="expenseSubmitButton" type="submit" class="rounded-lg bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99]">支出を追加</button>
             <button id="saveFavoriteButton" type="button" class="rounded-lg bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 transition hover:bg-amber-100 active:scale-[0.99]">★ よく使う支出</button>
           </div>
           <button id="cancelExpenseEditButton" type="button" class="hidden w-full rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-200">編集をやめる</button>
@@ -626,22 +629,11 @@
           <ul id="favoriteExpensesList" class="space-y-2"></ul>
         </section>
 
-        <form id="incomeBudgetForm" class="mt-5 rounded-lg bg-cyan-50 p-4">
+        <section id="incomeBudgetSummary" class="mt-5 rounded-lg bg-cyan-50 p-4">
           <div>
-            <p class="text-sm font-bold text-cyan-900">給料から予算を計算</p>
-            <p class="mt-1 text-xs leading-relaxed text-slate-500">給料から固定費を引いて、今月の予算候補を出します。</p>
+            <p class="text-sm font-bold text-cyan-900">今月の変動費予算</p>
+            <p class="mt-1 text-xs leading-relaxed text-slate-500">収入明細から固定費を引いた金額を予算候補として表示します。</p>
           </div>
-
-          <label for="monthlyIncome" class="mt-4 block text-sm font-semibold text-slate-700">月の給料（手取り）</label>
-          <input
-            id="monthlyIncome"
-            type="number"
-            inputmode="numeric"
-            min="0"
-            step="1000"
-            placeholder="例: 250000"
-            class="mt-2 w-full rounded-lg border border-cyan-100 bg-white px-4 py-3 text-base outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100"
-          >
 
           <div class="mt-4 grid grid-cols-2 gap-3">
             <div class="rounded-lg bg-white/80 p-3">
@@ -654,26 +646,18 @@
             </div>
           </div>
 
-          <p id="incomeBudgetMessage" class="mt-3 text-xs leading-relaxed text-slate-600">
-            給料を保存すると、固定費を引いた金額が表示されます。
-          </p>
+          <p id="incomeBudgetMessage" class="mt-3 text-xs leading-relaxed text-slate-600">収入を登録すると予算候補が表示されます。</p>
 
-          <div class="mt-4 grid grid-cols-2 gap-3">
-            <button
-              type="submit"
-              class="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700 active:scale-[0.99]"
-            >
-              給料を保存
-            </button>
+          <div class="mt-4">
             <button
               id="applySuggestedBudgetButton"
               type="button"
-              class="rounded-lg bg-white px-4 py-3 text-sm font-semibold text-cyan-800 shadow-sm ring-1 ring-cyan-100 transition hover:bg-cyan-100 active:scale-[0.99]"
+              class="w-full rounded-lg bg-white px-4 py-3 text-sm font-semibold text-cyan-800 shadow-sm ring-1 ring-cyan-100 transition hover:bg-cyan-100 active:scale-[0.99]"
             >
               今月の予算に反映
             </button>
           </div>
-        </form>
+        </section>
 
         <form id="budgetForm" class="mt-5 border-b border-slate-100 pb-5">
           <label for="budget" class="block text-sm font-semibold text-slate-700">今月の予算</label>
@@ -697,7 +681,7 @@
         </form>
 
         <form id="savingGoalForm" class="mt-5 border-b border-slate-100 pb-5">
-          <label for="savingGoalInput" class="block text-sm font-semibold text-slate-700">今月の節約目標</label>
+          <label for="savingGoalInput" class="block text-sm font-semibold text-slate-700">今月残したい金額</label>
           <div class="mt-2 flex gap-2">
             <input
               id="savingGoalInput"
@@ -717,7 +701,7 @@
           </div>
         </form>
 
-        <div class="mt-5">
+        <div id="historySection" class="mt-5">
           <div class="mb-3 flex items-center justify-between">
             <div>
               <h2 class="text-base font-bold text-slate-800">履歴</h2>
@@ -745,6 +729,17 @@
         <div class="mb-4">
           <p class="text-sm font-medium text-slate-500">サブスク/固定費の管理</p>
           <h2 class="mt-1 text-xl font-bold text-slate-900">毎月かかるお金</h2>
+        </div>
+
+        <div class="mb-4 grid grid-cols-2 gap-3">
+          <div class="rounded-lg bg-teal-50 p-3">
+            <p class="text-xs font-semibold text-teal-700">月あたり</p>
+            <p id="subscriptionMonthlyTotal" class="mt-1 text-lg font-bold text-teal-900">¥0</p>
+          </div>
+          <div class="rounded-lg bg-indigo-50 p-3">
+            <p class="text-xs font-semibold text-indigo-700">年間合計</p>
+            <p id="subscriptionYearlyTotal" class="mt-1 text-lg font-bold text-indigo-900">¥0</p>
+          </div>
         </div>
 
         <form id="subscriptionForm" class="space-y-4 border-b border-slate-100 pb-5">
@@ -786,11 +781,13 @@
           </div>
 
           <button
+            id="subscriptionSubmitButton"
             type="submit"
             class="w-full rounded-lg bg-teal-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.99]"
           >
             固定費を追加
           </button>
+          <button id="subscriptionCancelEditButton" type="button" class="hidden w-full rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600">編集をやめる</button>
         </form>
 
         <div class="mt-5">
@@ -826,10 +823,10 @@
     </nav>
   </main>
 
-  <div id="goalCelebration" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/30 px-6">
+  <div id="goalCelebration" role="dialog" aria-modal="true" aria-labelledby="goalCelebrationTitle" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/30 px-6">
     <div class="celebration-pop w-full max-w-sm rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 p-6 text-center shadow-2xl">
       <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl shadow-sm">¥</div>
-      <h2 class="mt-4 text-2xl font-bold text-emerald-950">目標達成！</h2>
+      <h2 id="goalCelebrationTitle" class="mt-4 text-2xl font-bold text-emerald-950">目標達成！</h2>
       <p id="goalCelebrationMessage" class="mt-3 text-sm leading-relaxed text-emerald-900">
         今月の節約目標を達成しました。
       </p>
@@ -848,2027 +845,7 @@
     <button id="undoToastButton" type="button" class="shrink-0 rounded-lg bg-white/15 px-3 py-2 font-bold text-white transition hover:bg-white/25">元に戻す</button>
   </div>
 
-  <script>
-    document.title = 'シンプル家計簿';
-
-    const STORAGE_KEY = 'simple-budget-expenses';
-    const BUDGET_STORAGE_KEY = 'simple-budget-monthly-budget';
-    const SUBSCRIPTION_STORAGE_KEY = 'simple-budget-subscriptions';
-    const SAVING_GOAL_STORAGE_KEY = 'simple-budget-saving-goal';
-    const SAVING_GOAL_ACHIEVED_MONTH_KEY = 'simple-budget-saving-goal-achieved-month';
-    const MONTH_START_DAY_STORAGE_KEY = 'simple-budget-month-start-day';
-    const CATEGORIES_STORAGE_KEY = 'simple-budget-categories';
-    const INCOME_STORAGE_KEY = 'simple-budget-monthly-income';
-    const CSV_EXPORT_DATE_STORAGE_KEY = 'simple-budget-last-csv-export-at';
-    const DATA_CHANGED_AT_STORAGE_KEY = 'simple-budget-data-changed-at';
-    const FAVORITE_EXPENSES_STORAGE_KEY = 'simple-budget-favorite-expenses';
-    const DEFAULT_BUDGET = 50000;
-    const DEFAULT_SAVING_GOAL = 10000;
-    const DEFAULT_CATEGORIES = ['食費', '日用品', '趣味', 'その他'];
-    const form = document.getElementById('expenseForm');
-    const incomeBudgetForm = document.getElementById('incomeBudgetForm');
-    const budgetForm = document.getElementById('budgetForm');
-    const savingGoalForm = document.getElementById('savingGoalForm');
-    const subscriptionForm = document.getElementById('subscriptionForm');
-    const todayLabel = document.getElementById('todayLabel');
-    const expenseDateInput = document.getElementById('expenseDate');
-    const amountInput = document.getElementById('amount');
-    const categoryInput = document.getElementById('category');
-    const expenseNoteInput = document.getElementById('expenseNote');
-    const paymentMethodInput = document.getElementById('paymentMethod');
-    const expenseSubmitButton = document.getElementById('expenseSubmitButton');
-    const saveFavoriteButton = document.getElementById('saveFavoriteButton');
-    const cancelExpenseEditButton = document.getElementById('cancelExpenseEditButton');
-    const editExpenseNotice = document.getElementById('editExpenseNotice');
-    const favoriteExpensesList = document.getElementById('favoriteExpensesList');
-    const favoriteEmptyState = document.getElementById('favoriteEmptyState');
-    const favoriteCount = document.getElementById('favoriteCount');
-    const monthlyIncomeInput = document.getElementById('monthlyIncome');
-    const budgetInput = document.getElementById('budget');
-    const savingGoalInput = document.getElementById('savingGoalInput');
-    const subscriptionNameInput = document.getElementById('subscriptionName');
-    const subscriptionAmountInput = document.getElementById('subscriptionAmount');
-    const subscriptionCycleInput = document.getElementById('subscriptionCycle');
-    const monthlyTotal = document.getElementById('monthlyTotal');
-    const chartCenterTotal = document.getElementById('chartCenterTotal');
-    const categoryChartCanvas = document.getElementById('categoryChart');
-    const categoryLegend = document.getElementById('categoryLegend');
-    const remainingBudget = document.getElementById('remainingBudget');
-    const dailyAvailable = document.getElementById('dailyAvailable');
-    const dailyAvailableLabel = document.getElementById('dailyAvailableLabel');
-    const previousMonthButton = document.getElementById('previousMonthButton');
-    const nextMonthButton = document.getElementById('nextMonthButton');
-    const periodLabel = document.getElementById('periodLabel');
-    const periodDateRange = document.getElementById('periodDateRange');
-    const overviewSuggestedBudget = document.getElementById('overviewSuggestedBudget');
-    const overviewIncome = document.getElementById('overviewIncome');
-    const overviewFixedCost = document.getElementById('overviewFixedCost');
-    const overviewIncomeMessage = document.getElementById('overviewIncomeMessage');
-    const incomeFixedCost = document.getElementById('incomeFixedCost');
-    const suggestedBudget = document.getElementById('suggestedBudget');
-    const incomeBudgetMessage = document.getElementById('incomeBudgetMessage');
-    const applySuggestedBudgetButton = document.getElementById('applySuggestedBudgetButton');
-    const savingGoalAmount = document.getElementById('savingGoalAmount');
-    const savingGoalProgress = document.getElementById('savingGoalProgress');
-    const savingGoalProgressBar = document.getElementById('savingGoalProgressBar');
-    const savingGoalRemaining = document.getElementById('savingGoalRemaining');
-    const savingGoalShortMessage = document.getElementById('savingGoalShortMessage');
-    const savingGoalMessage = document.getElementById('savingGoalMessage');
-    const subscriptionMonthlyTotal = document.getElementById('subscriptionMonthlyTotal');
-    const subscriptionYearlyTotal = document.getElementById('subscriptionYearlyTotal');
-    const subscriptionList = document.getElementById('subscriptionList');
-    const subscriptionEmptyState = document.getElementById('subscriptionEmptyState');
-    const subscriptionCount = document.getElementById('subscriptionCount');
-    const historyList = document.getElementById('historyList');
-    const emptyState = document.getElementById('emptyState');
-    const itemCount = document.getElementById('itemCount');
-    const historyToggleButton = document.getElementById('historyToggleButton');
-    const historyPeriodLabel = document.getElementById('historyPeriodLabel');
-    const splashScreen = document.getElementById('splashScreen');
-    const backupStatusCard = document.getElementById('backupStatusCard');
-    const backupStatusText = document.getElementById('backupStatusText');
-    const quickExportCsvButton = document.getElementById('quickExportCsvButton');
-    const exportCsvButton = document.getElementById('exportCsvButton');
-    const importCsvButton = document.getElementById('importCsvButton');
-    const importCsvInput = document.getElementById('importCsvInput');
-    const backupReminder = document.getElementById('backupReminder');
-    const backupReminderText = document.getElementById('backupReminderText');
-    const lastCsvExportLabel = document.getElementById('lastCsvExportLabel');
-    const monthStartDayInput = document.getElementById('monthStartDay');
-    const categoryAddForm = document.getElementById('categoryAddForm');
-    const categoryAddInput = document.getElementById('categoryAddInput');
-    const categorySettingsList = document.getElementById('categorySettingsList');
-    const overviewPanel = document.getElementById('overviewPanel');
-    const inputPanel = document.getElementById('inputPanel');
-    const fixedCostPanel = document.getElementById('fixedCostPanel');
-    const overviewTab = document.getElementById('overviewTab');
-    const inputTab = document.getElementById('inputTab');
-    const fixedCostTab = document.getElementById('fixedCostTab');
-    const tabButtons = [overviewTab, inputTab, fixedCostTab];
-    const goalCelebration = document.getElementById('goalCelebration');
-    const goalCelebrationMessage = document.getElementById('goalCelebrationMessage');
-    const goalCelebrationClose = document.getElementById('goalCelebrationClose');
-    const undoToast = document.getElementById('undoToast');
-    const undoToastMessage = document.getElementById('undoToastMessage');
-    const undoToastButton = document.getElementById('undoToastButton');
-    const subscriptionCycles = ['monthly', 'yearly'];
-    const paymentMethods = ['unspecified', 'cash', 'card', 'emoney', 'bank', 'other'];
-    const paymentMethodLabels = {
-      unspecified: '未設定',
-      cash: '現金',
-      card: 'クレジットカード',
-      emoney: '電子マネー',
-      bank: '口座振替',
-      other: 'その他'
-    };
-    const HISTORY_PREVIEW_LIMIT = 3;
-    const chartColors = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#fb7185', '#2dd4bf', '#f97316', '#818cf8'];
-    const emptyChartColors = ['#e2e8f0', '#e2e8f0', '#e2e8f0', '#e2e8f0'];
-
-    let categories = loadCategories();
-    let expenses = loadExpenses();
-    let favoriteExpenses = loadFavoriteExpenses();
-    let subscriptions = loadSubscriptions();
-    let monthlyBudget = loadBudget();
-    let monthlyIncome = loadIncome();
-    let savingGoal = loadSavingGoal();
-    let monthStartDay = loadMonthStartDay();
-    let activePanel = 'overview';
-    let isHistoryExpanded = false;
-    let selectedMonthOffset = 0;
-    let editingExpenseId = null;
-    let undoAction = null;
-    let undoTimer = null;
-    let categoryChart;
-
-    function loadExpenses() {
-      try {
-        const savedExpenses = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        if (!Array.isArray(savedExpenses)) return [];
-
-        return savedExpenses
-          .map((expense) => normalizeExpense(expense))
-          .filter(Boolean);
-      } catch {
-        return [];
-      }
-    }
-
-    function normalizeExpense(expense, allowedCategories = categories) {
-      if (!expense || typeof expense !== 'object') return null;
-
-      const amount = Number(expense.amount);
-      const fallbackCategory = allowedCategories.includes('その他') ? 'その他' : allowedCategories[0];
-      const category = allowedCategories.includes(expense.category) ? expense.category : fallbackCategory;
-      const createdAt = Number.isNaN(new Date(expense.createdAt).getTime())
-        ? new Date().toISOString()
-        : expense.createdAt;
-      const expenseDate = isValidDateInput(expense.expenseDate)
-        ? expense.expenseDate
-        : toDateInputValue(new Date(createdAt));
-      const note = String(expense.note || '').trim().slice(0, 60);
-      const paymentMethod = paymentMethods.includes(expense.paymentMethod)
-        ? expense.paymentMethod
-        : 'unspecified';
-
-      if (!Number.isFinite(amount) || amount <= 0) return null;
-
-      return {
-        id: typeof expense.id === 'string' && expense.id ? expense.id : createId(),
-        amount: Math.round(amount),
-        category,
-        expenseDate,
-        note,
-        paymentMethod,
-        createdAt
-      };
-    }
-
-    function normalizeFavoriteExpense(favorite, allowedCategories = categories) {
-      if (!favorite || typeof favorite !== 'object') return null;
-
-      const amount = Number(favorite.amount);
-      const fallbackCategory = allowedCategories.includes('その他') ? 'その他' : allowedCategories[0];
-      const category = allowedCategories.includes(favorite.category) ? favorite.category : fallbackCategory;
-      if (!Number.isFinite(amount) || amount <= 0) return null;
-
-      return {
-        id: typeof favorite.id === 'string' && favorite.id ? favorite.id : createId(),
-        amount: Math.round(amount),
-        category,
-        note: String(favorite.note || '').trim().slice(0, 60),
-        paymentMethod: paymentMethods.includes(favorite.paymentMethod) ? favorite.paymentMethod : 'unspecified',
-        createdAt: Number.isNaN(new Date(favorite.createdAt).getTime()) ? new Date().toISOString() : favorite.createdAt
-      };
-    }
-
-    function loadFavoriteExpenses() {
-      try {
-        const savedFavorites = JSON.parse(localStorage.getItem(FAVORITE_EXPENSES_STORAGE_KEY)) || [];
-        if (!Array.isArray(savedFavorites)) return [];
-        return savedFavorites.map((favorite) => normalizeFavoriteExpense(favorite)).filter(Boolean);
-      } catch {
-        return [];
-      }
-    }
-
-    function saveFavoriteExpenses() {
-      return saveToStorage(FAVORITE_EXPENSES_STORAGE_KEY, JSON.stringify(favoriteExpenses));
-    }
-
-    function saveToStorage(key, value) {
-      try {
-        localStorage.setItem(key, value);
-        return true;
-      } catch {
-        window.alert('データの保存に失敗しました。ブラウザの空き容量や設定を確認してください。');
-        return false;
-      }
-    }
-
-    function normalizeCategoryName(value) {
-      return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 16);
-    }
-
-    function uniqueCategoryNames(values) {
-      const names = [];
-      values.forEach((value) => {
-        const name = normalizeCategoryName(value);
-        if (name && !names.includes(name)) {
-          names.push(name);
-        }
-      });
-      return names;
-    }
-
-    function loadCategories() {
-      try {
-        const savedCategories = JSON.parse(localStorage.getItem(CATEGORIES_STORAGE_KEY)) || [];
-        if (!Array.isArray(savedCategories)) return DEFAULT_CATEGORIES.slice();
-
-        const names = uniqueCategoryNames(savedCategories);
-        return names.length > 0 ? names : DEFAULT_CATEGORIES.slice();
-      } catch {
-        return DEFAULT_CATEGORIES.slice();
-      }
-    }
-
-    function saveCategories() {
-      return saveToStorage(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
-    }
-
-    function loadMonthStartDay() {
-      const savedValue = Number(localStorage.getItem(MONTH_START_DAY_STORAGE_KEY));
-      return Number.isInteger(savedValue) && savedValue >= 1 && savedValue <= 28 ? savedValue : 1;
-    }
-
-    function saveMonthStartDay() {
-      return saveToStorage(MONTH_START_DAY_STORAGE_KEY, String(monthStartDay));
-    }
-
-    function loadIncome() {
-      const savedIncomeValue = localStorage.getItem(INCOME_STORAGE_KEY);
-      if (savedIncomeValue === null) return 0;
-
-      const savedIncome = Number(savedIncomeValue);
-      return Number.isFinite(savedIncome) && savedIncome >= 0 ? Math.round(savedIncome) : 0;
-    }
-
-    function saveIncome() {
-      return saveToStorage(INCOME_STORAGE_KEY, String(monthlyIncome));
-    }
-
-    function getLastCsvExportDate() {
-      const savedDate = localStorage.getItem(CSV_EXPORT_DATE_STORAGE_KEY);
-      const timestamp = savedDate ? new Date(savedDate).getTime() : NaN;
-      return Number.isNaN(timestamp) ? null : new Date(savedDate);
-    }
-
-    function markDataChanged() {
-      saveToStorage(DATA_CHANGED_AT_STORAGE_KEY, new Date().toISOString());
-    }
-
-    function markCsvExported() {
-      saveToStorage(CSV_EXPORT_DATE_STORAGE_KEY, new Date().toISOString());
-      localStorage.removeItem(DATA_CHANGED_AT_STORAGE_KEY);
-    }
-
-    function saveExpenses() {
-      return saveToStorage(STORAGE_KEY, JSON.stringify(expenses));
-    }
-
-    function loadSubscriptions() {
-      try {
-        const savedSubscriptions = JSON.parse(localStorage.getItem(SUBSCRIPTION_STORAGE_KEY)) || [];
-        if (!Array.isArray(savedSubscriptions)) return [];
-
-        return savedSubscriptions
-          .map(normalizeSubscription)
-          .filter(Boolean);
-      } catch {
-        return [];
-      }
-    }
-
-    function normalizeSubscription(subscription) {
-      if (!subscription || typeof subscription !== 'object') return null;
-
-      const name = String(subscription.name || '').trim().slice(0, 40);
-      const amount = Number(subscription.amount);
-      const cycle = subscriptionCycles.includes(subscription.cycle) ? subscription.cycle : 'monthly';
-      const createdAt = Number.isNaN(new Date(subscription.createdAt).getTime())
-        ? new Date().toISOString()
-        : subscription.createdAt;
-
-      if (!name || !Number.isFinite(amount) || amount <= 0) return null;
-
-      return {
-        id: typeof subscription.id === 'string' && subscription.id ? subscription.id : createId(),
-        name,
-        amount: Math.round(amount),
-        cycle,
-        createdAt
-      };
-    }
-
-    function saveSubscriptions() {
-      return saveToStorage(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(subscriptions));
-    }
-
-    function createId() {
-      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
-        return window.crypto.randomUUID();
-      }
-
-      return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    }
-
-    function toDateInputValue(date) {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-
-    function parseLocalDate(dateValue) {
-      if (!dateValue) return new Date();
-
-      const [year, month, day] = dateValue.split('-').map(Number);
-      if (!year || !month || !day) return new Date(dateValue);
-
-      return new Date(year, month - 1, day);
-    }
-
-    function isValidDateInput(dateValue) {
-      if (typeof dateValue !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
-        return false;
-      }
-
-      const [year, month, day] = dateValue.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
-    }
-
-    function getExpenseDateValue(expense) {
-      return expense.expenseDate || toDateInputValue(new Date(expense.createdAt));
-    }
-
-    function getExpenseTimestamp(expense) {
-      const date = parseLocalDate(getExpenseDateValue(expense));
-      date.setHours(23, 59, 59, 999);
-      return date.getTime();
-    }
-
-    function loadBudget() {
-      const savedBudgetValue = localStorage.getItem(BUDGET_STORAGE_KEY);
-      if (savedBudgetValue === null) return DEFAULT_BUDGET;
-
-      const savedBudget = Number(savedBudgetValue);
-      return Number.isFinite(savedBudget) && savedBudget >= 0 ? savedBudget : DEFAULT_BUDGET;
-    }
-
-    function saveBudget() {
-      return saveToStorage(BUDGET_STORAGE_KEY, String(monthlyBudget));
-    }
-
-    function loadSavingGoal() {
-      const savedGoalValue = localStorage.getItem(SAVING_GOAL_STORAGE_KEY);
-      if (savedGoalValue === null) return DEFAULT_SAVING_GOAL;
-
-      const savedGoal = Number(savedGoalValue);
-      return Number.isFinite(savedGoal) && savedGoal >= 0 ? savedGoal : DEFAULT_SAVING_GOAL;
-    }
-
-    function saveSavingGoal() {
-      return saveToStorage(SAVING_GOAL_STORAGE_KEY, String(savingGoal));
-    }
-
-    function formatYen(value) {
-      return new Intl.NumberFormat('ja-JP', {
-        style: 'currency',
-        currency: 'JPY',
-        maximumFractionDigits: 0
-      }).format(value);
-    }
-
-    function getCycleLabel(cycle) {
-      return cycle === 'yearly' ? '年額' : '月額';
-    }
-
-    function protectCsvText(value) {
-      const text = String(value ?? '');
-      return /^[\s\t\r\n]*[=+\-@]/.test(text) ? `'${text}` : text;
-    }
-
-    function restoreCsvText(value) {
-      const text = String(value ?? '');
-      return /^'[\s\t\r\n]*[=+\-@]/.test(text) ? text.slice(1) : text;
-    }
-
-    function escapeCsvCell(value) {
-      const text = protectCsvText(value);
-      const escaped = text.replace(/"/g, '""');
-      return /[",\r\n]/.test(escaped) ? `"${escaped}"` : escaped;
-    }
-
-    function parseCsv(text) {
-      const rows = [];
-      let row = [];
-      let cell = '';
-      let inQuotes = false;
-      let quoteClosed = false;
-      const source = text.replace(/^\uFEFF/, '');
-
-      for (let index = 0; index < source.length; index += 1) {
-        const char = source[index];
-        const nextChar = source[index + 1];
-
-        if (char === '"' && inQuotes && nextChar === '"') {
-          cell += '"';
-          index += 1;
-          continue;
-        }
-
-        if (char === '"') {
-          if (inQuotes) {
-            inQuotes = false;
-            quoteClosed = true;
-            continue;
-          }
-
-          if (cell === '') {
-            inQuotes = true;
-            continue;
-          }
-
-          throw new Error('CSVの引用符の位置が正しくありません。');
-        }
-
-        if (quoteClosed && char !== ',' && char !== '\n' && char !== '\r') {
-          throw new Error('CSVの引用符の後に不要な文字があります。');
-        }
-
-        if (quoteClosed && char === ',') {
-          quoteClosed = false;
-          row.push(cell);
-          cell = '';
-          continue;
-        }
-
-        if (char === ',' && !inQuotes) {
-          quoteClosed = false;
-          row.push(cell);
-          cell = '';
-          continue;
-        }
-
-        if ((char === '\n' || char === '\r') && !inQuotes) {
-          if (char === '\r' && nextChar === '\n') {
-            index += 1;
-          }
-          row.push(cell);
-          if (row.some((value) => value.trim() !== '')) {
-            rows.push(row);
-          }
-          row = [];
-          cell = '';
-          quoteClosed = false;
-          continue;
-        }
-
-        cell += char;
-      }
-
-      row.push(cell);
-      if (row.some((value) => value.trim() !== '')) {
-        rows.push(row);
-      }
-
-      if (inQuotes) {
-        throw new Error('CSVの引用符が正しく閉じられていません。');
-      }
-
-      return rows;
-    }
-
-    function buildCsvBackup() {
-      const rows = [
-        ['type', 'id', 'amount', 'category', 'expenseDate', 'cycle', 'name', 'createdAt', 'budget', 'note', 'paymentMethod'],
-        ['budget', '', '', '', '', '', '', '', monthlyBudget, '', ''],
-        ['income', '', '', '', '', '', '', '', monthlyIncome, '', ''],
-        ['savingGoal', '', '', '', '', '', '', '', savingGoal, '', ''],
-        ['monthStartDay', '', '', '', '', '', '', '', monthStartDay, '', '']
-      ];
-
-      categories.forEach((category) => {
-        rows.push(['category', '', '', category, '', '', '', '', '', '', '']);
-      });
-
-      expenses.forEach((expense) => {
-        rows.push([
-          'expense',
-          expense.id,
-          expense.amount,
-          expense.category,
-          getExpenseDateValue(expense),
-          '',
-          '',
-          expense.createdAt,
-          '',
-          expense.note,
-          expense.paymentMethod
-        ]);
-      });
-
-      favoriteExpenses.forEach((favorite) => {
-        rows.push([
-          'favoriteExpense',
-          favorite.id,
-          favorite.amount,
-          favorite.category,
-          '',
-          '',
-          '',
-          favorite.createdAt,
-          '',
-          favorite.note,
-          favorite.paymentMethod
-        ]);
-      });
-
-      subscriptions.forEach((subscription) => {
-        rows.push([
-          'subscription',
-          subscription.id,
-          subscription.amount,
-          '',
-          '',
-          subscription.cycle,
-          subscription.name,
-          subscription.createdAt,
-          '',
-          '',
-          ''
-        ]);
-      });
-
-      return rows
-        .map((row) => row.map(escapeCsvCell).join(','))
-        .join('\r\n');
-    }
-
-    function exportCsvBackup() {
-      const csv = `\uFEFF${buildCsvBackup()}`;
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `kakeibo-backup-${toDateInputValue(new Date())}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      markCsvExported();
-      renderBackupReminder();
-    }
-
-    function importCsvBackup(text) {
-      const rows = parseCsv(text);
-      if (rows.length < 2) {
-        throw new Error('読み込めるデータがありません。');
-      }
-
-      const headers = rows[0].map((header) => header.trim());
-      const typeIndex = headers.indexOf('type');
-      if (typeIndex === -1) {
-        throw new Error('このアプリ用のCSVではありません。');
-      }
-
-      const requiredHeaders = ['type', 'id', 'amount', 'category', 'expenseDate', 'cycle', 'name', 'createdAt', 'budget'];
-      const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
-      if (missingHeaders.length > 0) {
-        throw new Error(`CSVの項目が不足しています: ${missingHeaders.join(', ')}`);
-      }
-
-      let importedBudget = monthlyBudget;
-      let importedIncome = 0;
-      let importedSavingGoal = DEFAULT_SAVING_GOAL;
-      let importedMonthStartDay = 1;
-      let importedCategories = [];
-      const importedExpenses = [];
-      const importedFavoriteExpenses = [];
-      const importedSubscriptions = [];
-      const invalidRows = [];
-
-      importedCategories = uniqueCategoryNames(rows.slice(1)
-        .filter((row) => row[typeIndex] === 'category')
-        .map((row) => {
-          const categoryIndex = headers.indexOf('category');
-          return categoryIndex >= 0 ? restoreCsvText(row[categoryIndex] || '') : '';
-        }));
-      if (importedCategories.length === 0) {
-        importedCategories = DEFAULT_CATEGORIES.slice();
-      }
-
-      rows.slice(1).forEach((row, rowIndex) => {
-        const record = {};
-        const rowNumber = rowIndex + 2;
-        headers.forEach((header, index) => {
-          record[header] = row[index] ?? '';
-        });
-
-        const type = record.type;
-
-        if (type === 'budget') {
-          const budget = Number(record.budget);
-          if (Number.isFinite(budget) && budget >= 0) {
-            importedBudget = Math.round(budget);
-          } else {
-            invalidRows.push(`${rowNumber}行目: 予算の金額が正しくありません`);
-          }
-          return;
-        }
-
-        if (type === 'income') {
-          const income = Number(record.budget);
-          if (Number.isFinite(income) && income >= 0) {
-            importedIncome = Math.round(income);
-          } else {
-            invalidRows.push(`${rowNumber}行目: 給料の金額が正しくありません`);
-          }
-          return;
-        }
-
-        if (type === 'savingGoal') {
-          const goal = Number(record.budget);
-          if (Number.isFinite(goal) && goal >= 0) {
-            importedSavingGoal = Math.round(goal);
-          } else {
-            invalidRows.push(`${rowNumber}行目: 節約目標の金額が正しくありません`);
-          }
-          return;
-        }
-
-        if (type === 'monthStartDay') {
-          const day = Number(record.budget);
-          if (Number.isInteger(day) && day >= 1 && day <= 28) {
-            importedMonthStartDay = day;
-          } else {
-            invalidRows.push(`${rowNumber}行目: 月の開始日が正しくありません`);
-          }
-          return;
-        }
-
-        if (type === 'category') {
-          return;
-        }
-
-        if (type === 'expense') {
-          const normalizedExpense = normalizeExpense({
-            id: restoreCsvText(record.id),
-            amount: record.amount,
-            category: restoreCsvText(record.category),
-            expenseDate: restoreCsvText(record.expenseDate),
-            note: restoreCsvText(record.note),
-            paymentMethod: restoreCsvText(record.paymentMethod),
-            createdAt: restoreCsvText(record.createdAt)
-          }, importedCategories);
-
-          if (normalizedExpense) {
-            importedExpenses.push(normalizedExpense);
-          } else {
-            invalidRows.push(`${rowNumber}行目: 支出データが正しくありません`);
-          }
-          return;
-        }
-
-        if (type === 'favoriteExpense') {
-          const normalizedFavorite = normalizeFavoriteExpense({
-            id: restoreCsvText(record.id),
-            amount: record.amount,
-            category: restoreCsvText(record.category),
-            note: restoreCsvText(record.note),
-            paymentMethod: restoreCsvText(record.paymentMethod),
-            createdAt: restoreCsvText(record.createdAt)
-          }, importedCategories);
-
-          if (normalizedFavorite) {
-            importedFavoriteExpenses.push(normalizedFavorite);
-          } else {
-            invalidRows.push(`${rowNumber}行目: よく使う支出データが正しくありません`);
-          }
-          return;
-        }
-
-        if (type === 'subscription') {
-          const normalizedSubscription = normalizeSubscription({
-            id: restoreCsvText(record.id),
-            name: restoreCsvText(record.name),
-            amount: record.amount,
-            cycle: restoreCsvText(record.cycle),
-            createdAt: restoreCsvText(record.createdAt)
-          });
-
-          if (normalizedSubscription) {
-            importedSubscriptions.push(normalizedSubscription);
-          } else {
-            invalidRows.push(`${rowNumber}行目: 固定費データが正しくありません`);
-          }
-          return;
-        }
-
-        invalidRows.push(`${rowNumber}行目: データ種別が正しくありません`);
-      });
-
-      if (invalidRows.length > 0) {
-        const preview = invalidRows.slice(0, 5).join('\n');
-        const suffix = invalidRows.length > 5 ? `\nほか ${invalidRows.length - 5}件` : '';
-        throw new Error(`CSVに読み込めない行があります。\n${preview}${suffix}`);
-      }
-
-      const shouldImport = window.confirm(
-        `CSVを読み込みますか？\n支出 ${importedExpenses.length}件、よく使う支出 ${importedFavoriteExpenses.length}件、固定費 ${importedSubscriptions.length}件を現在のデータに上書きします。\n必要なら先にCSVを書き出してください。`
-      );
-      if (!shouldImport) return;
-
-      const saved = saveToStorage(STORAGE_KEY, JSON.stringify(importedExpenses))
-        && saveToStorage(FAVORITE_EXPENSES_STORAGE_KEY, JSON.stringify(importedFavoriteExpenses))
-        && saveToStorage(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(importedSubscriptions))
-        && saveToStorage(BUDGET_STORAGE_KEY, String(importedBudget))
-        && saveToStorage(INCOME_STORAGE_KEY, String(importedIncome))
-        && saveToStorage(SAVING_GOAL_STORAGE_KEY, String(importedSavingGoal))
-        && saveToStorage(MONTH_START_DAY_STORAGE_KEY, String(importedMonthStartDay))
-        && saveToStorage(CATEGORIES_STORAGE_KEY, JSON.stringify(importedCategories));
-      if (!saved) return;
-
-      expenses = importedExpenses;
-      favoriteExpenses = importedFavoriteExpenses;
-      subscriptions = importedSubscriptions;
-      monthlyBudget = importedBudget;
-      monthlyIncome = importedIncome;
-      savingGoal = importedSavingGoal;
-      monthStartDay = importedMonthStartDay;
-      categories = importedCategories;
-      render();
-      window.alert('CSVの読み込みが完了しました。');
-    }
-
-    function formatToday(date) {
-      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-      return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日（${weekdays[date.getDay()]}）`;
-    }
-
-    function formatExpenseDate(dateValue) {
-      const date = parseLocalDate(dateValue);
-      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-      return `${date.getMonth() + 1}月${date.getDate()}日（${weekdays[date.getDay()]}）`;
-    }
-
-    function formatShortDate(date) {
-      return `${date.getMonth() + 1}/${date.getDate()}`;
-    }
-
-    function getPaymentMethodLabel(paymentMethod) {
-      return paymentMethodLabels[paymentMethod] || paymentMethodLabels.unspecified;
-    }
-
-    function updateTodayLabel() {
-      todayLabel.textContent = formatToday(new Date());
-    }
-
-    function getBudgetPeriod(date = new Date()) {
-      const base = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const start = base.getDate() >= monthStartDay
-        ? new Date(base.getFullYear(), base.getMonth(), monthStartDay)
-        : new Date(base.getFullYear(), base.getMonth() - 1, monthStartDay);
-      const nextStart = new Date(start.getFullYear(), start.getMonth() + 1, monthStartDay);
-
-      return { start, nextStart };
-    }
-
-    function getSelectedBudgetPeriod() {
-      const currentPeriod = getBudgetPeriod();
-      const start = new Date(
-        currentPeriod.start.getFullYear(),
-        currentPeriod.start.getMonth() + selectedMonthOffset,
-        monthStartDay
-      );
-      const nextStart = new Date(start.getFullYear(), start.getMonth() + 1, monthStartDay);
-      return { start, nextStart };
-    }
-
-    function updatePeriodNavigation() {
-      const { start, nextStart } = getSelectedBudgetPeriod();
-      const end = new Date(nextStart.getFullYear(), nextStart.getMonth(), nextStart.getDate() - 1);
-      periodLabel.textContent = selectedMonthOffset === 0
-        ? '今月'
-        : `${start.getFullYear()}年${start.getMonth() + 1}月度`;
-      periodDateRange.textContent = `${formatShortDate(start)}〜${formatShortDate(end)}`;
-      historyPeriodLabel.textContent = `${periodLabel.textContent}の支出`;
-      nextMonthButton.disabled = selectedMonthOffset >= 0;
-    }
-
-    function getCurrentMonthKey() {
-      const { start } = getBudgetPeriod();
-      return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(monthStartDay).padStart(2, '0')}`;
-    }
-
-    function getSavingGoalMessage(percent, remaining, amountLeft) {
-      if (savingGoal <= 0) {
-        return {
-          short: '目標を決めましょう',
-          detail: 'まずは小さな金額で大丈夫です。今月キープしたい金額を設定してみましょう。'
-        };
-      }
-
-      if (remaining < 0) {
-        return {
-          short: '立て直しモード',
-          detail: '今月は少しオーバーしています。責めずに、次の支出を小さく整えるところから始めましょう。'
-        };
-      }
-
-      if (amountLeft === 0) {
-        return {
-          short: '達成中です',
-          detail: 'すばらしいです。今月は目標額をしっかりキープできています。'
-        };
-      }
-
-      if (percent >= 80) {
-        return {
-          short: 'あと少し',
-          detail: `あと${formatYen(amountLeft)}で達成です。ここまでかなり良いペースです。`
-        };
-      }
-
-      if (percent >= 40) {
-        return {
-          short: 'いいペース',
-          detail: 'まだ十分に間に合います。今日使えるお金を意識しながら、無理なく続けましょう。'
-        };
-      }
-
-      return {
-        short: 'ここからで大丈夫',
-        detail: '小さな見直しで流れは変えられます。固定費やついで買いを一つだけ見直してみましょう。'
-      };
-    }
-
-    function showGoalCelebration(remaining) {
-      const monthKey = getCurrentMonthKey();
-      if (localStorage.getItem(SAVING_GOAL_ACHIEVED_MONTH_KEY) === monthKey) return;
-
-      saveToStorage(SAVING_GOAL_ACHIEVED_MONTH_KEY, monthKey);
-      goalCelebrationMessage.textContent = `今月は${formatYen(remaining)}をキープできています。この調子です。`;
-      goalCelebration.classList.remove('hidden');
-      goalCelebration.classList.add('flex');
-    }
-
-    function updateSavingGoalSummary(remaining) {
-      const safeRemaining = Math.max(remaining, 0);
-      const percent = savingGoal > 0
-        ? Math.min(Math.floor((safeRemaining / savingGoal) * 100), 100)
-        : 0;
-      const amountLeft = savingGoal > 0
-        ? Math.max(savingGoal - safeRemaining, 0)
-        : 0;
-      const message = getSavingGoalMessage(percent, remaining, amountLeft);
-
-      savingGoalAmount.textContent = formatYen(savingGoal);
-      savingGoalProgress.textContent = `${percent}%`;
-      savingGoalProgressBar.style.width = `${percent}%`;
-      savingGoalRemaining.textContent = formatYen(amountLeft);
-      savingGoalShortMessage.textContent = message.short;
-      savingGoalMessage.textContent = message.detail;
-      savingGoalInput.value = savingGoal;
-
-      if (selectedMonthOffset === 0 && savingGoal > 0 && remaining >= savingGoal) {
-        showGoalCelebration(remaining);
-      }
-    }
-
-    function hideUndoToast() {
-      if (undoTimer) window.clearTimeout(undoTimer);
-      undoTimer = null;
-      undoAction = null;
-      undoToast.classList.add('hidden');
-      undoToast.classList.remove('flex');
-    }
-
-    function showUndoToast(message, action) {
-      if (undoTimer) window.clearTimeout(undoTimer);
-      undoAction = action;
-      undoToastMessage.textContent = message;
-      undoToast.classList.remove('hidden');
-      undoToast.classList.add('flex');
-      undoTimer = window.setTimeout(hideUndoToast, 6000);
-    }
-
-    function resetExpenseForm() {
-      editingExpenseId = null;
-      form.reset();
-      categoryInput.value = categories[0];
-      paymentMethodInput.value = 'unspecified';
-      expenseDateInput.value = toDateInputValue(new Date());
-      expenseSubmitButton.textContent = '追加';
-      editExpenseNotice.classList.add('hidden');
-      cancelExpenseEditButton.classList.add('hidden');
-    }
-
-    function startEditingExpense(expense) {
-      showPanel('input');
-      editingExpenseId = expense.id;
-      expenseDateInput.value = getExpenseDateValue(expense);
-      amountInput.value = expense.amount;
-      categoryInput.value = expense.category;
-      expenseNoteInput.value = expense.note;
-      paymentMethodInput.value = expense.paymentMethod;
-      expenseSubmitButton.textContent = '変更を保存';
-      editExpenseNotice.classList.remove('hidden');
-      cancelExpenseEditButton.classList.remove('hidden');
-      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      amountInput.focus({ preventScroll: true });
-    }
-
-    function showPanel(panelName) {
-      activePanel = panelName;
-
-      overviewPanel.classList.toggle('hidden', panelName !== 'overview');
-      inputPanel.classList.toggle('hidden', panelName !== 'input');
-      fixedCostPanel.classList.toggle('hidden', panelName !== 'fixedCost');
-
-      tabButtons.forEach((button) => {
-        const isActive = button.dataset.panel === panelName;
-        button.className = isActive
-          ? 'flex flex-col items-center gap-1 rounded-xl bg-emerald-600 px-2 py-2 text-xs font-semibold text-white transition'
-          : 'flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold text-slate-500 transition';
-      });
-
-      if (panelName === 'overview' && categoryChart) {
-        window.requestAnimationFrame(() => {
-          categoryChart.resize();
-        });
-      }
-    }
-
-    function isExpenseInSelectedPeriod(expense) {
-      const date = parseLocalDate(getExpenseDateValue(expense));
-      const { start, nextStart } = getSelectedBudgetPeriod();
-      return date >= start && date < nextStart;
-    }
-
-    function getRemainingDaysInMonth() {
-      const today = new Date();
-      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const { nextStart } = getBudgetPeriod(todayStart);
-      const dayMs = 24 * 60 * 60 * 1000;
-      return Math.max(Math.ceil((nextStart - todayStart) / dayMs), 1);
-    }
-
-    function getSelectedMonthExpenses() {
-      return expenses.filter((expense) => isExpenseInSelectedPeriod(expense));
-    }
-
-    function getCategoryTotals(currentMonthExpenses) {
-      return categories.map((category) => {
-        return currentMonthExpenses
-          .filter((expense) => expense.category === category)
-          .reduce((sum, expense) => sum + expense.amount, 0);
-      });
-    }
-
-    function getCategoryColor(index) {
-      return chartColors[index % chartColors.length];
-    }
-
-    function updateCategoryChart(categoryTotals, total) {
-      if (!window.Chart) return;
-
-      const chartData = total > 0 ? categoryTotals : [1];
-      const colors = total > 0
-        ? categories.map((_, index) => getCategoryColor(index))
-        : emptyChartColors;
-
-      if (!categoryChart) {
-        categoryChart = new Chart(categoryChartCanvas, {
-          type: 'doughnut',
-          data: {
-            labels: total > 0 ? categories : ['データなし'],
-            datasets: [{
-              data: chartData,
-              backgroundColor: colors,
-              borderColor: '#ffffff',
-              borderWidth: 4,
-              hoverOffset: 4
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '70%',
-            plugins: {
-              legend: {
-                display: false
-              },
-              tooltip: {
-                enabled: total > 0,
-                callbacks: {
-                  label: (context) => `${context.label}: ${formatYen(context.raw)}`
-                }
-              }
-            }
-          }
-        });
-        return;
-      }
-
-      categoryChart.data.labels = total > 0 ? categories : ['データなし'];
-      categoryChart.data.datasets[0].data = chartData;
-      categoryChart.data.datasets[0].backgroundColor = colors;
-      categoryChart.options.plugins.tooltip.enabled = total > 0;
-      categoryChart.update();
-    }
-
-    function updateCategoryLegend(categoryTotals, total) {
-      categoryLegend.innerHTML = '';
-
-      categories.forEach((category, index) => {
-        const amount = categoryTotals[index];
-        const percent = total > 0 ? Math.round((amount / total) * 100) : 0;
-        const item = document.createElement('div');
-        item.className = 'flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2';
-
-        const label = document.createElement('span');
-        label.className = 'flex min-w-0 items-center gap-2 text-slate-600';
-
-        const swatch = document.createElement('span');
-        swatch.className = 'h-2.5 w-2.5 shrink-0 rounded-full';
-        swatch.style.backgroundColor = getCategoryColor(index);
-
-        const categoryName = document.createElement('span');
-        categoryName.className = 'truncate';
-        categoryName.textContent = category;
-
-        const percentage = document.createElement('span');
-        percentage.className = 'shrink-0 font-semibold text-slate-800';
-        percentage.textContent = `${percent}%`;
-
-        label.append(swatch, categoryName);
-        item.append(label, percentage);
-        categoryLegend.appendChild(item);
-      });
-    }
-
-    function renderCategoryOptions() {
-      const selectedValue = categories.includes(categoryInput.value)
-        ? categoryInput.value
-        : categories[0];
-      categoryInput.innerHTML = '';
-
-      categories.forEach((category) => {
-        const option = document.createElement('option');
-        option.value = category;
-        option.textContent = category;
-        categoryInput.appendChild(option);
-      });
-
-      categoryInput.value = selectedValue || categories[0];
-    }
-
-    function renderMonthStartOptions() {
-      if (monthStartDayInput.options.length === 28) {
-        monthStartDayInput.value = String(monthStartDay);
-        return;
-      }
-
-      monthStartDayInput.innerHTML = '';
-      for (let day = 1; day <= 28; day += 1) {
-        const option = document.createElement('option');
-        option.value = String(day);
-        option.textContent = `${day}日`;
-        monthStartDayInput.appendChild(option);
-      }
-      monthStartDayInput.value = String(monthStartDay);
-    }
-
-    function renderCategorySettings() {
-      categorySettingsList.innerHTML = '';
-
-      categories.forEach((category, index) => {
-        const item = document.createElement('li');
-        item.className = 'flex items-center gap-2 rounded-lg bg-slate-50 p-2';
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.maxLength = 16;
-        input.value = category;
-        input.dataset.categoryIndex = String(index);
-        input.dataset.originalValue = category;
-        input.className = 'min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100';
-
-        const deleteButton = document.createElement('button');
-        deleteButton.type = 'button';
-        deleteButton.dataset.deleteCategoryIndex = String(index);
-        deleteButton.className = 'shrink-0 rounded-md bg-white px-3 py-2 text-xs font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200 transition hover:bg-rose-50 hover:text-rose-600';
-        deleteButton.textContent = '削除';
-
-        item.append(input, deleteButton);
-        categorySettingsList.appendChild(item);
-      });
-    }
-
-    function renderSettings() {
-      renderMonthStartOptions();
-      renderCategoryOptions();
-      renderCategorySettings();
-    }
-
-    function createHistoryItem(expense) {
-      const item = document.createElement('li');
-      item.className = 'flex items-center justify-between gap-3 rounded-lg bg-white p-4 shadow-sm';
-
-      const detail = document.createElement('div');
-      detail.className = 'min-w-0';
-
-      const meta = document.createElement('div');
-      meta.className = 'flex items-center gap-2';
-
-      const category = document.createElement('span');
-      category.className = 'rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700';
-      category.textContent = expense.category;
-
-      const date = document.createElement('span');
-      date.className = 'text-xs text-slate-400';
-      date.textContent = formatExpenseDate(getExpenseDateValue(expense));
-
-      const amount = document.createElement('p');
-      amount.className = 'mt-2 text-xl font-bold text-slate-900';
-      amount.textContent = formatYen(expense.amount);
-
-      const extra = document.createElement('p');
-      extra.className = 'mt-1 truncate text-xs text-slate-500';
-      extra.textContent = [expense.note, getPaymentMethodLabel(expense.paymentMethod)]
-        .filter((value) => value && value !== paymentMethodLabels.unspecified)
-        .join(' ・ ');
-      extra.classList.toggle('hidden', !extra.textContent);
-
-      const actions = document.createElement('div');
-      actions.className = 'flex shrink-0 flex-col gap-2';
-
-      const editButton = document.createElement('button');
-      editButton.type = 'button';
-      editButton.className = 'rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100';
-      editButton.dataset.editExpenseId = expense.id;
-      editButton.textContent = '編集';
-
-      const deleteButton = document.createElement('button');
-      deleteButton.type = 'button';
-      deleteButton.className = 'shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-600';
-      deleteButton.dataset.id = expense.id;
-      deleteButton.textContent = '削除';
-
-      meta.append(category, date);
-      detail.append(meta, amount, extra);
-      actions.append(editButton, deleteButton);
-      item.append(detail, actions);
-
-      return item;
-    }
-
-    function createFavoriteExpenseItem(favorite) {
-      const item = document.createElement('li');
-      item.className = 'flex items-center gap-2 rounded-lg bg-amber-50 p-3';
-
-      const addButton = document.createElement('button');
-      addButton.type = 'button';
-      addButton.dataset.favoriteExpenseId = favorite.id;
-      addButton.className = 'min-w-0 flex-1 text-left';
-
-      const title = document.createElement('p');
-      title.className = 'truncate text-sm font-bold text-slate-900';
-      title.textContent = favorite.note || favorite.category;
-
-      const meta = document.createElement('p');
-      meta.className = 'mt-1 truncate text-xs text-slate-600';
-      meta.textContent = `${formatYen(favorite.amount)} ・ ${favorite.category} ・ ${getPaymentMethodLabel(favorite.paymentMethod)}`;
-      addButton.append(title, meta);
-
-      const deleteButton = document.createElement('button');
-      deleteButton.type = 'button';
-      deleteButton.dataset.deleteFavoriteExpenseId = favorite.id;
-      deleteButton.className = 'shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-500 shadow-sm transition hover:text-rose-600';
-      deleteButton.textContent = '削除';
-      item.append(addButton, deleteButton);
-      return item;
-    }
-
-    function renderFavoriteExpenses() {
-      favoriteCount.textContent = `${favoriteExpenses.length}件`;
-      favoriteEmptyState.classList.toggle('hidden', favoriteExpenses.length > 0);
-      favoriteExpensesList.innerHTML = '';
-      favoriteExpenses.forEach((favorite) => {
-        favoriteExpensesList.appendChild(createFavoriteExpenseItem(favorite));
-      });
-    }
-
-    function getSubscriptionTotals() {
-      const monthlyBaseTotal = subscriptions
-        .filter((subscription) => subscription.cycle === 'monthly')
-        .reduce((sum, subscription) => sum + subscription.amount, 0);
-      const yearlyBaseTotal = subscriptions
-        .filter((subscription) => subscription.cycle === 'yearly')
-        .reduce((sum, subscription) => sum + subscription.amount, 0);
-
-      // 年額は月あたりに割り、画面表示は1円単位に丸めます。
-      return {
-        monthly: Math.round(monthlyBaseTotal + yearlyBaseTotal / 12),
-        yearly: Math.round(monthlyBaseTotal * 12 + yearlyBaseTotal)
-      };
-    }
-
-    function getSuggestedBudget() {
-      const fixedCost = getSubscriptionTotals().monthly;
-      return Math.max(monthlyIncome - fixedCost, 0);
-    }
-
-    function getIncomeBudgetMessage(fixedCost, suggested) {
-      if (monthlyIncome <= 0) {
-        return '給料を入力すると、固定費を引いた予算候補が見られます。';
-      }
-
-      if (monthlyIncome < fixedCost) {
-        return '固定費が給料を上回っています。固定費の見直しが必要かもしれません。';
-      }
-
-      return `給料から固定費を引くと、今月の予算候補は${formatYen(suggested)}です。`;
-    }
-
-    function getSubscriptionYearlyCost(subscription) {
-      return subscription.cycle === 'monthly'
-        ? subscription.amount * 12
-        : subscription.amount;
-    }
-
-    function createSubscriptionItem(subscription) {
-      const item = document.createElement('li');
-      item.className = 'flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-4';
-
-      const detail = document.createElement('div');
-      detail.className = 'min-w-0';
-
-      const name = document.createElement('p');
-      name.className = 'truncate text-base font-bold text-slate-900';
-      name.textContent = subscription.name;
-
-      const meta = document.createElement('div');
-      meta.className = 'mt-2 flex flex-wrap items-center gap-2';
-
-      const cycle = document.createElement('span');
-      cycle.className = 'rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700';
-      cycle.textContent = getCycleLabel(subscription.cycle);
-
-      const amount = document.createElement('span');
-      amount.className = 'text-sm font-semibold text-slate-600';
-      amount.textContent = formatYen(subscription.amount);
-
-      const deleteButton = document.createElement('button');
-      deleteButton.type = 'button';
-      deleteButton.className = 'shrink-0 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-rose-50 hover:text-rose-600';
-      deleteButton.dataset.subscriptionId = subscription.id;
-      deleteButton.textContent = '削除';
-
-      meta.append(cycle, amount);
-      detail.append(name, meta);
-      item.append(detail, deleteButton);
-
-      return item;
-    }
-
-    function renderSubscriptions() {
-      const totals = getSubscriptionTotals();
-
-      subscriptionMonthlyTotal.textContent = formatYen(totals.monthly);
-      subscriptionYearlyTotal.textContent = formatYen(totals.yearly);
-      subscriptionCount.textContent = `${subscriptions.length}件`;
-      subscriptionEmptyState.classList.toggle('hidden', subscriptions.length > 0);
-      subscriptionList.innerHTML = '';
-
-      subscriptions
-        .slice()
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .forEach((subscription) => {
-          subscriptionList.appendChild(createSubscriptionItem(subscription));
-        });
-    }
-
-    function renderIncomeBudgetSummary() {
-      const totals = getSubscriptionTotals();
-      const suggested = getSuggestedBudget();
-      const message = getIncomeBudgetMessage(totals.monthly, suggested);
-
-      monthlyIncomeInput.value = monthlyIncome > 0 ? monthlyIncome : '';
-      incomeFixedCost.textContent = formatYen(totals.monthly);
-      suggestedBudget.textContent = formatYen(suggested);
-      incomeBudgetMessage.textContent = message;
-      overviewIncome.textContent = formatYen(monthlyIncome);
-      overviewFixedCost.textContent = formatYen(totals.monthly);
-      overviewSuggestedBudget.textContent = formatYen(suggested);
-      overviewIncomeMessage.textContent = message;
-      const isOverFixedCost = monthlyIncome > 0 && monthlyIncome < totals.monthly;
-      suggestedBudget.classList.toggle('text-rose-600', isOverFixedCost);
-      suggestedBudget.classList.toggle('text-cyan-950', !isOverFixedCost);
-      overviewSuggestedBudget.classList.toggle('text-rose-600', isOverFixedCost);
-      overviewSuggestedBudget.classList.toggle('text-cyan-950', !isOverFixedCost);
-    }
-
-    function renderBackupReminder() {
-      const lastExportDate = getLastCsvExportDate();
-      const dataChangedAt = localStorage.getItem(DATA_CHANGED_AT_STORAGE_KEY);
-      const hasData = expenses.length > 0 || favoriteExpenses.length > 0 || subscriptions.length > 0 || monthlyIncome > 0;
-      const daysSinceExport = lastExportDate
-        ? Math.floor((Date.now() - lastExportDate.getTime()) / (24 * 60 * 60 * 1000))
-        : Infinity;
-      const shouldRemind = hasData && dataChangedAt && (!lastExportDate || daysSinceExport >= 7);
-      const reminderText = lastExportDate
-        ? '前回のCSVバックアップから7日以上たっています。念のため書き出しをおすすめします。'
-        : 'まだCSVバックアップがありません。データ保護のため、書き出しをおすすめします。';
-
-      lastCsvExportLabel.textContent = lastExportDate
-        ? `前回バックアップ: ${formatExpenseDate(toDateInputValue(lastExportDate))}`
-        : '前回バックアップ: なし';
-      backupStatusCard.classList.toggle('hidden', !shouldRemind);
-      backupStatusText.textContent = reminderText;
-      backupReminder.classList.toggle('hidden', !shouldRemind);
-      backupReminderText.textContent = reminderText;
-    }
-
-    function render() {
-      renderSettings();
-      updatePeriodNavigation();
-      const selectedMonthExpenses = getSelectedMonthExpenses();
-      const total = selectedMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-      const categoryTotals = getCategoryTotals(selectedMonthExpenses);
-      const remaining = monthlyBudget - total;
-      const dailyAmount = selectedMonthOffset === 0
-        ? Math.floor(remaining / getRemainingDaysInMonth())
-        : remaining;
-
-      monthlyTotal.textContent = formatYen(total);
-      chartCenterTotal.textContent = formatYen(total);
-      remainingBudget.textContent = formatYen(remaining);
-      dailyAvailableLabel.textContent = selectedMonthOffset === 0 ? '今日使えるお金' : '月末の予算差額';
-      dailyAvailable.textContent = remaining < 0 ? '予算オーバー' : formatYen(dailyAmount);
-      remainingBudget.classList.toggle('text-rose-600', remaining < 0);
-      remainingBudget.classList.toggle('text-emerald-900', remaining >= 0);
-      updateSavingGoalSummary(remaining);
-      updateCategoryChart(categoryTotals, total);
-      updateCategoryLegend(categoryTotals, total);
-      budgetInput.value = monthlyBudget;
-      const sortedExpenses = selectedMonthExpenses
-        .slice()
-        .sort((a, b) => {
-          const dateDiff = getExpenseTimestamp(b) - getExpenseTimestamp(a);
-          if (dateDiff !== 0) return dateDiff;
-
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        });
-      const visibleExpenses = isHistoryExpanded
-        ? sortedExpenses
-        : sortedExpenses.slice(0, HISTORY_PREVIEW_LIMIT);
-
-      itemCount.textContent = isHistoryExpanded || selectedMonthExpenses.length <= HISTORY_PREVIEW_LIMIT
-        ? `${selectedMonthExpenses.length}件`
-        : `最新${visibleExpenses.length}件 / 全${selectedMonthExpenses.length}件`;
-      emptyState.classList.toggle('hidden', selectedMonthExpenses.length > 0);
-      historyList.innerHTML = '';
-      historyList.className = isHistoryExpanded
-        ? 'max-h-72 space-y-3 overflow-y-auto pr-1'
-        : 'space-y-3';
-      historyToggleButton.classList.toggle('hidden', selectedMonthExpenses.length <= HISTORY_PREVIEW_LIMIT);
-      historyToggleButton.textContent = isHistoryExpanded ? '最新3件だけ表示' : 'すべて表示';
-
-      visibleExpenses
-        .forEach((expense) => {
-          historyList.appendChild(createHistoryItem(expense));
-        });
-
-      renderSubscriptions();
-      renderFavoriteExpenses();
-      renderIncomeBudgetSummary();
-      renderBackupReminder();
-    }
-
-    budgetForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-
-      const budget = Number(budgetInput.value);
-      if (!Number.isFinite(budget) || budget < 0) {
-        budgetInput.focus();
-        return;
-      }
-
-      const previousBudget = monthlyBudget;
-      monthlyBudget = Math.round(budget);
-      if (!saveBudget()) {
-        monthlyBudget = previousBudget;
-        render();
-        return;
-      }
-      markDataChanged();
-      render();
-    });
-
-    incomeBudgetForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-
-      const income = Number(monthlyIncomeInput.value);
-      if (!Number.isFinite(income) || income < 0) {
-        monthlyIncomeInput.focus();
-        return;
-      }
-
-      const previousIncome = monthlyIncome;
-      monthlyIncome = Math.round(income);
-      if (!saveIncome()) {
-        monthlyIncome = previousIncome;
-        render();
-        return;
-      }
-
-      markDataChanged();
-      render();
-    });
-
-    applySuggestedBudgetButton.addEventListener('click', () => {
-      const suggested = getSuggestedBudget();
-      const shouldApply = window.confirm(`${formatYen(suggested)}を今月の予算に反映しますか？`);
-      if (!shouldApply) return;
-
-      const previousBudget = monthlyBudget;
-      monthlyBudget = suggested;
-      if (!saveBudget()) {
-        monthlyBudget = previousBudget;
-        render();
-        return;
-      }
-
-      markDataChanged();
-      render();
-    });
-
-    savingGoalForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-
-      const goal = Number(savingGoalInput.value);
-      if (!Number.isFinite(goal) || goal < 0) {
-        savingGoalInput.focus();
-        return;
-      }
-
-      const previousSavingGoal = savingGoal;
-      savingGoal = Math.round(goal);
-      if (!saveSavingGoal()) {
-        savingGoal = previousSavingGoal;
-        render();
-        return;
-      }
-      markDataChanged();
-      render();
-    });
-
-    form.addEventListener('submit', (event) => {
-      event.preventDefault();
-
-      const amount = Number(amountInput.value);
-      if (!Number.isFinite(amount) || amount <= 0) {
-        amountInput.focus();
-        return;
-      }
-
-      if (!isValidDateInput(expenseDateInput.value)) {
-        expenseDateInput.focus();
-        return;
-      }
-
-      const category = categories.includes(categoryInput.value) ? categoryInput.value : categories[0];
-      const note = expenseNoteInput.value.trim().slice(0, 60);
-      const paymentMethod = paymentMethods.includes(paymentMethodInput.value)
-        ? paymentMethodInput.value
-        : 'unspecified';
-
-      if (editingExpenseId) {
-        const expenseIndex = expenses.findIndex((expense) => expense.id === editingExpenseId);
-        if (expenseIndex === -1) {
-          resetExpenseForm();
-          render();
-          return;
-        }
-
-        const previousExpense = { ...expenses[expenseIndex] };
-        const updatedExpense = {
-          ...previousExpense,
-          amount: Math.round(amount),
-          category,
-          expenseDate: expenseDateInput.value,
-          note,
-          paymentMethod
-        };
-        expenses[expenseIndex] = updatedExpense;
-        if (!saveExpenses()) {
-          expenses[expenseIndex] = previousExpense;
-          render();
-          return;
-        }
-
-        markDataChanged();
-        resetExpenseForm();
-        render();
-        showUndoToast('支出を変更しました', () => {
-          const currentIndex = expenses.findIndex((expense) => expense.id === previousExpense.id);
-          if (currentIndex === -1) return;
-          expenses[currentIndex] = previousExpense;
-          if (saveExpenses()) {
-            markDataChanged();
-            render();
-          }
-        });
-        return;
-      }
-
-      const expense = {
-        id: createId(),
-        amount: Math.round(amount),
-        category,
-        expenseDate: expenseDateInput.value,
-        note,
-        paymentMethod,
-        createdAt: new Date().toISOString()
-      };
-
-      expenses.push(expense);
-      if (!saveExpenses()) {
-        expenses = expenses.filter((savedExpense) => savedExpense.id !== expense.id);
-        render();
-        return;
-      }
-      markDataChanged();
-      resetExpenseForm();
-      render();
-      showUndoToast('支出を登録しました', () => {
-        const previousExpenses = expenses;
-        expenses = expenses.filter((savedExpense) => savedExpense.id !== expense.id);
-        if (!saveExpenses()) {
-          expenses = previousExpenses;
-          return;
-        }
-        markDataChanged();
-        render();
-      });
-      amountInput.focus();
-    });
-
-    cancelExpenseEditButton.addEventListener('click', () => {
-      resetExpenseForm();
-      amountInput.focus();
-    });
-
-    saveFavoriteButton.addEventListener('click', () => {
-      const amount = Number(amountInput.value);
-      if (!Number.isFinite(amount) || amount <= 0) {
-        amountInput.focus();
-        return;
-      }
-
-      const favorite = normalizeFavoriteExpense({
-        id: createId(),
-        amount,
-        category: categoryInput.value,
-        note: expenseNoteInput.value,
-        paymentMethod: paymentMethodInput.value,
-        createdAt: new Date().toISOString()
-      });
-      if (!favorite) return;
-
-      favoriteExpenses.push(favorite);
-      if (!saveFavoriteExpenses()) {
-        favoriteExpenses = favoriteExpenses.filter((item) => item.id !== favorite.id);
-        return;
-      }
-      markDataChanged();
-      renderFavoriteExpenses();
-      showUndoToast('よく使う支出に登録しました', () => {
-        favoriteExpenses = favoriteExpenses.filter((item) => item.id !== favorite.id);
-        if (saveFavoriteExpenses()) {
-          markDataChanged();
-          renderFavoriteExpenses();
-        }
-      });
-    });
-
-    favoriteExpensesList.addEventListener('click', (event) => {
-      if (!(event.target instanceof Element)) return;
-
-      const deleteButton = event.target.closest('button[data-delete-favorite-expense-id]');
-      if (deleteButton) {
-        const index = favoriteExpenses.findIndex((favorite) => favorite.id === deleteButton.dataset.deleteFavoriteExpenseId);
-        if (index === -1) return;
-        const [deletedFavorite] = favoriteExpenses.splice(index, 1);
-        if (!saveFavoriteExpenses()) {
-          favoriteExpenses.splice(index, 0, deletedFavorite);
-          return;
-        }
-        markDataChanged();
-        renderFavoriteExpenses();
-        showUndoToast('よく使う支出を削除しました', () => {
-          favoriteExpenses.splice(Math.min(index, favoriteExpenses.length), 0, deletedFavorite);
-          if (saveFavoriteExpenses()) {
-            markDataChanged();
-            renderFavoriteExpenses();
-          }
-        });
-        return;
-      }
-
-      const addButton = event.target.closest('button[data-favorite-expense-id]');
-      if (!addButton) return;
-      const favorite = favoriteExpenses.find((item) => item.id === addButton.dataset.favoriteExpenseId);
-      if (!favorite) return;
-
-      const expense = {
-        id: createId(),
-        amount: favorite.amount,
-        category: favorite.category,
-        expenseDate: toDateInputValue(new Date()),
-        note: favorite.note,
-        paymentMethod: favorite.paymentMethod,
-        createdAt: new Date().toISOString()
-      };
-      expenses.push(expense);
-      if (!saveExpenses()) {
-        expenses = expenses.filter((item) => item.id !== expense.id);
-        return;
-      }
-      selectedMonthOffset = 0;
-      markDataChanged();
-      render();
-      showUndoToast('今日の支出に登録しました', () => {
-        expenses = expenses.filter((item) => item.id !== expense.id);
-        if (saveExpenses()) {
-          markDataChanged();
-          render();
-        }
-      });
-    });
-
-    subscriptionForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-
-      const name = subscriptionNameInput.value.trim();
-      const amount = Number(subscriptionAmountInput.value);
-      const cycle = subscriptionCycles.includes(subscriptionCycleInput.value)
-        ? subscriptionCycleInput.value
-        : 'monthly';
-
-      if (!name) {
-        subscriptionNameInput.focus();
-        return;
-      }
-
-      if (!Number.isFinite(amount) || amount <= 0) {
-        subscriptionAmountInput.focus();
-        return;
-      }
-
-      const subscription = {
-        id: createId(),
-        name: name.slice(0, 40),
-        amount: Math.round(amount),
-        cycle,
-        createdAt: new Date().toISOString()
-      };
-
-      subscriptions.push(subscription);
-      if (!saveSubscriptions()) {
-        subscriptions = subscriptions.filter((savedSubscription) => savedSubscription.id !== subscription.id);
-        render();
-        return;
-      }
-      markDataChanged();
-      render();
-      subscriptionForm.reset();
-      subscriptionCycleInput.value = 'monthly';
-      subscriptionNameInput.focus();
-    });
-
-    historyList.addEventListener('click', (event) => {
-      if (!(event.target instanceof Element)) return;
-
-      const editButton = event.target.closest('button[data-edit-expense-id]');
-      if (editButton) {
-        const expense = expenses.find((item) => item.id === editButton.dataset.editExpenseId);
-        if (expense) startEditingExpense(expense);
-        return;
-      }
-
-      const deleteButton = event.target.closest('button[data-id]');
-      if (!deleteButton) return;
-
-      const shouldDelete = window.confirm('この支出を削除しますか？');
-      if (!shouldDelete) return;
-
-      const deletedIndex = expenses.findIndex((expense) => expense.id === deleteButton.dataset.id);
-      if (deletedIndex === -1) return;
-      const previousExpenses = expenses.slice();
-      const [deletedExpense] = expenses.splice(deletedIndex, 1);
-      if (!saveExpenses()) {
-        expenses = previousExpenses;
-        render();
-        return;
-      }
-      markDataChanged();
-      render();
-      showUndoToast('支出を削除しました', () => {
-        expenses.splice(Math.min(deletedIndex, expenses.length), 0, deletedExpense);
-        if (saveExpenses()) {
-          markDataChanged();
-          render();
-        }
-      });
-    });
-
-    subscriptionList.addEventListener('click', (event) => {
-      if (!(event.target instanceof Element)) return;
-
-      const deleteButton = event.target.closest('button[data-subscription-id]');
-      if (!deleteButton) return;
-
-      const shouldDelete = window.confirm('この固定費を削除しますか？');
-      if (!shouldDelete) return;
-
-      const previousSubscriptions = subscriptions;
-      const deletedIndex = subscriptions.findIndex((subscription) => {
-        return subscription.id === deleteButton.dataset.subscriptionId;
-      });
-      const deletedSubscription = subscriptions.find((subscription) => {
-        return subscription.id === deleteButton.dataset.subscriptionId;
-      });
-      subscriptions = subscriptions.filter((subscription) => {
-        return subscription.id !== deleteButton.dataset.subscriptionId;
-      });
-      if (!saveSubscriptions()) {
-        subscriptions = previousSubscriptions;
-        render();
-        return;
-      }
-      markDataChanged();
-      render();
-      if (deletedSubscription) {
-        showUndoToast(`固定費を削除しました（年間 ${formatYen(getSubscriptionYearlyCost(deletedSubscription))}）`, () => {
-          subscriptions.splice(Math.max(deletedIndex, 0), 0, deletedSubscription);
-          if (saveSubscriptions()) {
-            markDataChanged();
-            render();
-          }
-        });
-      }
-    });
-
-    monthStartDayInput.addEventListener('change', () => {
-      const nextDay = Number(monthStartDayInput.value);
-      if (!Number.isInteger(nextDay) || nextDay < 1 || nextDay > 28) {
-        monthStartDayInput.value = String(monthStartDay);
-        return;
-      }
-
-      const previousMonthStartDay = monthStartDay;
-      monthStartDay = nextDay;
-      if (!saveMonthStartDay()) {
-        monthStartDay = previousMonthStartDay;
-      } else {
-        markDataChanged();
-      }
-      render();
-    });
-
-    categoryAddForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-
-      const nextCategory = normalizeCategoryName(categoryAddInput.value);
-      if (!nextCategory) {
-        categoryAddInput.focus();
-        return;
-      }
-
-      if (categories.includes(nextCategory)) {
-        window.alert('同じカテゴリがすでにあります。');
-        categoryAddInput.focus();
-        return;
-      }
-
-      const previousCategories = categories.slice();
-      categories = [...categories, nextCategory];
-      if (!saveCategories()) {
-        categories = previousCategories;
-        render();
-        return;
-      }
-
-      markDataChanged();
-      categoryAddForm.reset();
-      render();
-    });
-
-    categorySettingsList.addEventListener('change', (event) => {
-      if (!(event.target instanceof HTMLInputElement)) return;
-
-      const index = Number(event.target.dataset.categoryIndex);
-      const previousName = event.target.dataset.originalValue;
-      const nextName = normalizeCategoryName(event.target.value);
-
-      if (!Number.isInteger(index) || !previousName || categories[index] !== previousName) {
-        render();
-        return;
-      }
-
-      if (!nextName) {
-        window.alert('カテゴリ名を入力してください。');
-        render();
-        return;
-      }
-
-      if (nextName === previousName) {
-        render();
-        return;
-      }
-
-      if (categories.includes(nextName)) {
-        window.alert('同じカテゴリ名は使えません。');
-        render();
-        return;
-      }
-
-      const previousCategories = categories.slice();
-      const previousExpenses = expenses.slice();
-      const previousFavoriteExpenses = favoriteExpenses.slice();
-      categories = categories.map((category) => category === previousName ? nextName : category);
-      expenses = expenses.map((expense) => {
-        return expense.category === previousName ? { ...expense, category: nextName } : expense;
-      });
-      favoriteExpenses = favoriteExpenses.map((favorite) => {
-        return favorite.category === previousName ? { ...favorite, category: nextName } : favorite;
-      });
-
-      if (!saveCategories() || !saveExpenses() || !saveFavoriteExpenses()) {
-        categories = previousCategories;
-        expenses = previousExpenses;
-        favoriteExpenses = previousFavoriteExpenses;
-        render();
-        return;
-      }
-
-      markDataChanged();
-      render();
-    });
-
-    categorySettingsList.addEventListener('click', (event) => {
-      if (!(event.target instanceof Element)) return;
-
-      const deleteButton = event.target.closest('button[data-delete-category-index]');
-      if (!deleteButton) return;
-
-      const index = Number(deleteButton.dataset.deleteCategoryIndex);
-      const categoryToDelete = categories[index];
-      if (!Number.isInteger(index) || !categoryToDelete) return;
-
-      if (categories.length <= 1) {
-        window.alert('カテゴリは最低1つ必要です。');
-        return;
-      }
-
-      const usedCount = expenses.filter((expense) => expense.category === categoryToDelete).length;
-      let moveToCategory = categories.find((category) => category !== categoryToDelete);
-
-      if (usedCount > 0) {
-        const candidates = categories.filter((category) => category !== categoryToDelete);
-        const answer = window.prompt(
-          `${categoryToDelete} を使った履歴が ${usedCount}件あります。\n移動先カテゴリを入力してください。\n候補: ${candidates.join(' / ')}`,
-          moveToCategory
-        );
-        if (answer === null) return;
-
-        moveToCategory = normalizeCategoryName(answer);
-        if (!candidates.includes(moveToCategory)) {
-          window.alert('候補にあるカテゴリ名を入力してください。');
-          return;
-        }
-      } else {
-        const shouldDelete = window.confirm(`${categoryToDelete} を削除しますか？`);
-        if (!shouldDelete) return;
-      }
-
-      const previousCategories = categories.slice();
-      const previousExpenses = expenses.slice();
-      const previousFavoriteExpenses = favoriteExpenses.slice();
-      categories = categories.filter((category) => category !== categoryToDelete);
-      expenses = expenses.map((expense) => {
-        return expense.category === categoryToDelete ? { ...expense, category: moveToCategory } : expense;
-      });
-      favoriteExpenses = favoriteExpenses.map((favorite) => {
-        return favorite.category === categoryToDelete ? { ...favorite, category: moveToCategory } : favorite;
-      });
-
-      if (!saveCategories() || !saveExpenses() || !saveFavoriteExpenses()) {
-        categories = previousCategories;
-        expenses = previousExpenses;
-        favoriteExpenses = previousFavoriteExpenses;
-        render();
-        return;
-      }
-
-      markDataChanged();
-      render();
-    });
-
-    tabButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        showPanel(button.dataset.panel);
-      });
-    });
-
-    previousMonthButton.addEventListener('click', () => {
-      selectedMonthOffset -= 1;
-      isHistoryExpanded = false;
-      render();
-    });
-
-    nextMonthButton.addEventListener('click', () => {
-      if (selectedMonthOffset >= 0) return;
-      selectedMonthOffset += 1;
-      isHistoryExpanded = false;
-      render();
-    });
-
-    historyToggleButton.addEventListener('click', () => {
-      isHistoryExpanded = !isHistoryExpanded;
-      render();
-    });
-
-    goalCelebrationClose.addEventListener('click', () => {
-      goalCelebration.classList.add('hidden');
-      goalCelebration.classList.remove('flex');
-    });
-
-    undoToastButton.addEventListener('click', () => {
-      const action = undoAction;
-      hideUndoToast();
-      if (action) action();
-    });
-
-    exportCsvButton.addEventListener('click', () => {
-      exportCsvBackup();
-    });
-
-    quickExportCsvButton.addEventListener('click', () => {
-      exportCsvBackup();
-    });
-
-    importCsvButton.addEventListener('click', () => {
-      importCsvInput.click();
-    });
-
-    importCsvInput.addEventListener('change', () => {
-      const file = importCsvInput.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.addEventListener('load', () => {
-        try {
-          importCsvBackup(String(reader.result || ''));
-        } catch (error) {
-          window.alert(error.message || 'CSVの読み込みに失敗しました。');
-        } finally {
-          importCsvInput.value = '';
-        }
-      });
-      reader.addEventListener('error', () => {
-        window.alert('CSVファイルを読み込めませんでした。');
-        importCsvInput.value = '';
-      });
-      reader.readAsText(file, 'utf-8');
-    });
-
-    window.addEventListener('load', () => {
-      updateTodayLabel();
-      expenseDateInput.value = toDateInputValue(new Date());
-      render();
-      showPanel(activePanel);
-      window.setInterval(updateTodayLabel, 60000);
-
-      window.setTimeout(() => {
-        splashScreen.classList.add('splash-hidden');
-      }, 1000);
-    });
-  </script>
+  <script src="app-core.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
